@@ -4,6 +4,7 @@ import SwiftUI
 struct UnifiedDiffView: View {
     let diff: FileDiff
     let showLineNumbers: Bool
+    var wrapLines: Bool = false
     var searchText: String = ""
     var currentMatchIndex: Int = 0
     var onMatchCountChanged: ((Int) -> Void)?
@@ -18,13 +19,14 @@ struct UnifiedDiffView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollViewReader { scrollProxy in
-                ScrollView([.horizontal, .vertical]) {
+                ScrollView(wrapLines ? [.vertical] : [.horizontal, .vertical]) {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(diff.hunks.enumerated()), id: \.element.id) { hunkIndex, hunk in
                             DiffHunkView(
                                 hunk: hunk,
                                 hunkIndex: hunkIndex,
                                 showLineNumbers: showLineNumbers,
+                                wrapLines: wrapLines,
                                 colorScheme: colorScheme,
                                 searchText: searchText,
                                 currentMatchIndex: currentMatchIndex,
@@ -36,7 +38,8 @@ struct UnifiedDiffView: View {
                             )
                         }
                     }
-                    .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+                    .frame(minWidth: wrapLines ? nil : geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+                    .frame(maxWidth: wrapLines ? geometry.size.width : nil)
                     .font(DSTypography.code())
                 }
                 .onChange(of: currentMatchIndex) { newIndex in
@@ -106,6 +109,7 @@ struct DiffHunkView: View {
     let hunk: DiffHunk
     let hunkIndex: Int
     let showLineNumbers: Bool
+    var wrapLines: Bool = false
     let colorScheme: ColorScheme
     var searchText: String = ""
     var currentMatchIndex: Int = 0
@@ -186,6 +190,7 @@ struct DiffHunkView: View {
                     line: line,
                     lineId: "\(hunkIndex)-\(lineIndex)",
                     showLineNumbers: showLineNumbers,
+                    wrapLines: wrapLines,
                     colorScheme: colorScheme,
                     searchText: searchText,
                     isCurrentMatch: isCurrentMatch(hunkIndex: hunkIndex, lineIndex: lineIndex),
@@ -212,6 +217,7 @@ struct DiffLineView: View {
     let line: DiffLine
     let lineId: String
     let showLineNumbers: Bool
+    var wrapLines: Bool = false
     let colorScheme: ColorScheme
     var searchText: String = ""
     var isCurrentMatch: Bool = false
@@ -247,11 +253,14 @@ struct DiffLineView: View {
                 HighlightedText(
                     text: line.content,
                     searchText: searchText,
-                    isCurrentMatch: isCurrentMatch
+                    isCurrentMatch: isCurrentMatch,
+                    wrapLines: wrapLines
                 )
             } else {
                 Text(line.content + (line.hasNewline ? "" : " "))
                     .foregroundStyle(line.hasNewline ? .primary : .secondary)
+                    .lineLimit(wrapLines ? nil : 1)
+                    .fixedSize(horizontal: !wrapLines, vertical: false)
             }
 
             if !line.hasNewline {
@@ -261,7 +270,9 @@ struct DiffLineView: View {
                     .italic()
             }
 
-            Spacer(minLength: 0)
+            if !wrapLines {
+                Spacer(minLength: 0)
+            }
         }
         .padding(.horizontal, DSSpacing.sm)
         .padding(.vertical, 1)
@@ -315,6 +326,7 @@ struct HighlightedText: View {
     let text: String
     let searchText: String
     let isCurrentMatch: Bool
+    var wrapLines: Bool = false
 
     var body: some View {
         let parts = highlightedParts()
@@ -324,6 +336,8 @@ struct HighlightedText: View {
                     .background(part.isHighlighted ? (isCurrentMatch ? Color.orange : Color.yellow).opacity(0.5) : Color.clear)
             }
         }
+        .lineLimit(wrapLines ? nil : 1)
+        .fixedSize(horizontal: !wrapLines, vertical: false)
     }
 
     private func highlightedParts() -> [HighlightPart] {

@@ -39,23 +39,27 @@ struct ChangesView: View {
     @ObservedObject var diffViewModel: DiffViewModel
     @ObservedObject var commitViewModel: CommitViewModel
 
+    @State private var isDiffFullscreen: Bool = false
+
     var body: some View {
         HSplitView {
             // Left panel: File list and commit
-            VStack(spacing: 0) {
-                FileStatusList(viewModel: statusViewModel)
+            if !isDiffFullscreen {
+                VStack(spacing: 0) {
+                    FileStatusList(viewModel: statusViewModel)
 
-                Divider()
+                    Divider()
 
-                CommitCreationView(
-                    viewModel: commitViewModel,
-                    canCommit: statusViewModel.canCommit
-                )
+                    CommitCreationView(
+                        viewModel: commitViewModel,
+                        canCommit: statusViewModel.canCommit
+                    )
+                }
+                .frame(minWidth: 250, maxWidth: 350)
             }
-            .frame(minWidth: 250, maxWidth: 350)
 
             // Right panel: Diff view
-            DiffView(viewModel: diffViewModel)
+            DiffView(viewModel: diffViewModel, isFullscreen: $isDiffFullscreen)
                 .frame(minWidth: 400)
         }
     }
@@ -66,21 +70,27 @@ struct HistoryView: View {
     @ObservedObject var historyViewModel: HistoryViewModel
     @ObservedObject var diffViewModel: DiffViewModel
 
+    @State private var isDiffFullscreen: Bool = false
+
     var body: some View {
         HSplitView {
             // Left: Commit list
-            CommitHistoryView(viewModel: historyViewModel)
-                .frame(minWidth: 300, maxWidth: 400)
+            if !isDiffFullscreen {
+                CommitHistoryView(viewModel: historyViewModel)
+                    .frame(minWidth: 300, maxWidth: 400)
+            }
 
             // Right: Commit diff or details
             VStack {
                 if let commit = historyViewModel.selectedCommit {
-                    CommitDetailView(commit: commit)
-                        .frame(height: 150)
+                    if !isDiffFullscreen {
+                        CommitDetailView(commit: commit)
+                            .frame(height: 150)
 
-                    Divider()
+                        Divider()
+                    }
 
-                    DiffView(viewModel: diffViewModel)
+                    DiffView(viewModel: diffViewModel, isFullscreen: $isDiffFullscreen)
                 } else {
                     EmptyStateView(
                         "Select a Commit",

@@ -3,16 +3,22 @@ import SwiftUI
 /// Main diff view container.
 struct DiffView: View {
     @ObservedObject var viewModel: DiffViewModel
+    @Binding var isFullscreen: Bool
 
     @State private var showSearch: Bool = false
     @State private var searchText: String = ""
     @State private var currentMatchIndex: Int = 0
     @State private var totalMatches: Int = 0
 
+    init(viewModel: DiffViewModel, isFullscreen: Binding<Bool> = .constant(false)) {
+        self.viewModel = viewModel
+        self._isFullscreen = isFullscreen
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
-            DiffToolbar(viewModel: viewModel, onSearchTap: { showSearch.toggle() })
+            DiffToolbar(viewModel: viewModel, onSearchTap: { showSearch.toggle() }, isFullscreen: $isFullscreen)
 
             // Search bar
             if showSearch {
@@ -51,6 +57,7 @@ struct DiffView: View {
                             UnifiedDiffView(
                                 diff: diff,
                                 showLineNumbers: viewModel.showLineNumbers,
+                                wrapLines: viewModel.wrapLines,
                                 searchText: searchText,
                                 currentMatchIndex: currentMatchIndex,
                                 onMatchCountChanged: { totalMatches = $0 },

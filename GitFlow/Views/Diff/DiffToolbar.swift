@@ -4,6 +4,13 @@ import SwiftUI
 struct DiffToolbar: View {
     @ObservedObject var viewModel: DiffViewModel
     var onSearchTap: (() -> Void)?
+    @Binding var isFullscreen: Bool
+
+    init(viewModel: DiffViewModel, onSearchTap: (() -> Void)? = nil, isFullscreen: Binding<Bool> = .constant(false)) {
+        self.viewModel = viewModel
+        self.onSearchTap = onSearchTap
+        self._isFullscreen = isFullscreen
+    }
 
     var body: some View {
         HStack {
@@ -62,6 +69,17 @@ struct DiffToolbar: View {
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
+
+                // Fullscreen toggle
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isFullscreen.toggle()
+                    }
+                } label: {
+                    Image(systemName: isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                .buttonStyle(.borderless)
+                .help(isFullscreen ? "Exit fullscreen" : "Fullscreen diff")
             }
         }
         .padding(.horizontal)
