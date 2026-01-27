@@ -43,7 +43,15 @@ A free, professional-grade Git GUI for macOS built with Swift and SwiftUI, featu
 1. Go to the [Releases page](https://github.com/Nicolas-Arsenault/GitFlow/releases)
 2. Download the latest `GitFlow-x.x.x.dmg`
 3. Open the DMG and drag GitFlow to Applications
-4. On first launch, right-click and select "Open" (required for unsigned apps)
+
+**First Launch (Important):** macOS will show a warning because the app isn't notarized. To open it:
+
+- **Option 1:** Right-click (or Control-click) GitFlow.app and select "Open", then click "Open" in the dialog
+- **Option 2:** Run this command in Terminal:
+  ```bash
+  xattr -cr /Applications/GitFlow.app
+  ```
+  Then open the app normally
 
 ### Homebrew
 

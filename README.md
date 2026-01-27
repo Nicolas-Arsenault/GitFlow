@@ -19,6 +19,8 @@ brew install --cask gitflow
 
 Download the latest DMG from [Releases](https://github.com/Nicolas-Arsenault/GitFlow/releases).
 
+> **Note:** On first launch, right-click the app and select "Open" (or run `xattr -cr /Applications/GitFlow.app` in Terminal) since the app isn't notarized yet.
+
 ## Features
 
 - **Safety First** — Confirmation for destructive actions, warnings for unpushed commits
