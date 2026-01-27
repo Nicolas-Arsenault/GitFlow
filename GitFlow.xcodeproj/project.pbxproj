@@ -91,6 +91,7 @@
 		VIEW027 /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE027 /* RemoteView.swift */; };
 		VIEW028 /* CloneRepositorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE028 /* CloneRepositorySheet.swift */; };
 		VIEW029 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE029 /* SettingsView.swift */; };
+		VIEW030 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE030 /* AvatarView.swift */; };
 
 		/* Utilities */
 		UTIL001 /* String+Git.swift in Sources */ = {isa = PBXBuildFile; fileRef = UTILFILE001 /* String+Git.swift */; };
@@ -189,6 +190,7 @@
 		VIEWFILE027 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		VIEWFILE028 /* CloneRepositorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloneRepositorySheet.swift; sourceTree = "<group>"; };
 		VIEWFILE029 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		VIEWFILE030 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
 
 		/* Utilities */
 		UTILFILE001 /* String+Git.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Git.swift"; sourceTree = "<group>"; };
@@ -397,6 +399,7 @@
 				VIEWFILE022 /* LoadingView.swift */,
 				VIEWFILE023 /* ErrorView.swift */,
 				VIEWFILE024 /* ConfirmationDialog.swift */,
+				VIEWFILE030 /* AvatarView.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -631,6 +634,7 @@
 				VIEW027 /* RemoteView.swift in Sources */,
 				VIEW028 /* CloneRepositorySheet.swift in Sources */,
 				VIEW029 /* SettingsView.swift in Sources */,
+				VIEW030 /* AvatarView.swift in Sources */,
 				UTIL001 /* String+Git.swift in Sources */,
 				UTIL002 /* Date+Formatting.swift in Sources */,
 				UTIL003 /* Constants.swift in Sources */,

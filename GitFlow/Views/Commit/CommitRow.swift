@@ -5,42 +5,52 @@ struct CommitRow: View {
     let commit: Commit
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Subject line
-            Text(commit.subject)
-                .fontWeight(.medium)
-                .lineLimit(1)
+        HStack(alignment: .top, spacing: DSSpacing.sm) {
+            // Author avatar
+            AvatarView(
+                name: commit.authorName,
+                email: commit.authorEmail,
+                size: 28
+            )
+            .padding(.top, 2)
 
-            // Metadata
-            HStack(spacing: 8) {
-                // Hash
-                Text(commit.shortHash)
-                    .font(.caption)
-                    .fontDesign(.monospaced)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                // Subject line
+                Text(commit.subject)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
 
-                // Author
-                Text(commit.authorName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                // Metadata
+                HStack(spacing: 8) {
+                    // Hash
+                    Text(commit.shortHash)
+                        .font(.caption)
+                        .fontDesign(.monospaced)
+                        .foregroundStyle(.secondary)
 
-                Spacer()
+                    // Author
+                    Text(commit.authorName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
-                // Date
-                Text(commit.authorDate.formatted(.relative(presentation: .named)))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+                    Spacer()
 
-            // Merge indicator
-            if commit.isMerge {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.merge")
-                        .font(.caption2)
-                    Text("Merge commit")
-                        .font(.caption2)
+                    // Date
+                    Text(commit.authorDate.formatted(.relative(presentation: .named)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .foregroundStyle(.secondary)
+
+                // Merge indicator
+                if commit.isMerge {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.merge")
+                            .font(.caption2)
+                        Text("Merge commit")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.vertical, 4)

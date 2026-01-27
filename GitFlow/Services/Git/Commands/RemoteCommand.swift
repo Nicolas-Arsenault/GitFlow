@@ -115,6 +115,39 @@ struct RemoveRemoteCommand: VoidGitCommand {
     }
 }
 
+/// Command to rename a remote.
+struct RenameRemoteCommand: VoidGitCommand {
+    let oldName: String
+    let newName: String
+
+    var arguments: [String] {
+        ["remote", "rename", oldName, newName]
+    }
+}
+
+/// Command to set the URL of a remote.
+struct SetRemoteURLCommand: VoidGitCommand {
+    let name: String
+    let url: String
+    let pushURL: Bool
+
+    init(name: String, url: String, pushURL: Bool = false) {
+        self.name = name
+        self.url = url
+        self.pushURL = pushURL
+    }
+
+    var arguments: [String] {
+        var args = ["remote", "set-url"]
+        if pushURL {
+            args.append("--push")
+        }
+        args.append(name)
+        args.append(url)
+        return args
+    }
+}
+
 /// Command to clone a repository.
 struct CloneCommand: VoidGitCommand {
     let url: String

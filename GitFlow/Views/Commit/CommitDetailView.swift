@@ -48,7 +48,12 @@ struct CommitDetailView: View {
                 GridRow {
                     Text("Author")
                         .foregroundStyle(.secondary)
-                    HStack {
+                    HStack(spacing: 8) {
+                        AvatarView(
+                            name: commit.authorName,
+                            email: commit.authorEmail,
+                            size: 20
+                        )
                         Text(commit.authorName)
                         Text("<\(commit.authorEmail)>")
                             .foregroundStyle(.secondary)

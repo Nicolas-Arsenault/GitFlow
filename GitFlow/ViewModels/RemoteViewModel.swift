@@ -130,6 +130,88 @@ final class RemoteViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Remote Management
+
+    /// Adds a new remote.
+    func addRemote(name: String, url: String) async {
+        isOperationInProgress = true
+        operationMessage = "Adding remote \(name)..."
+        defer {
+            isOperationInProgress = false
+            operationMessage = nil
+        }
+
+        do {
+            try await gitService.addRemote(name: name, url: url, in: repository)
+            await refresh()
+            error = nil
+        } catch let gitError as GitError {
+            error = gitError
+        } catch {
+            self.error = .unknown(message: error.localizedDescription)
+        }
+    }
+
+    /// Removes a remote.
+    func removeRemote(name: String) async {
+        isOperationInProgress = true
+        operationMessage = "Removing remote \(name)..."
+        defer {
+            isOperationInProgress = false
+            operationMessage = nil
+        }
+
+        do {
+            try await gitService.removeRemote(name: name, in: repository)
+            await refresh()
+            error = nil
+        } catch let gitError as GitError {
+            error = gitError
+        } catch {
+            self.error = .unknown(message: error.localizedDescription)
+        }
+    }
+
+    /// Renames a remote.
+    func renameRemote(oldName: String, newName: String) async {
+        isOperationInProgress = true
+        operationMessage = "Renaming remote..."
+        defer {
+            isOperationInProgress = false
+            operationMessage = nil
+        }
+
+        do {
+            try await gitService.renameRemote(oldName: oldName, newName: newName, in: repository)
+            await refresh()
+            error = nil
+        } catch let gitError as GitError {
+            error = gitError
+        } catch {
+            self.error = .unknown(message: error.localizedDescription)
+        }
+    }
+
+    /// Sets the URL of a remote.
+    func setRemoteURL(name: String, url: String) async {
+        isOperationInProgress = true
+        operationMessage = "Updating remote URL..."
+        defer {
+            isOperationInProgress = false
+            operationMessage = nil
+        }
+
+        do {
+            try await gitService.setRemoteURL(name: name, url: url, in: repository)
+            await refresh()
+            error = nil
+        } catch let gitError as GitError {
+            error = gitError
+        } catch {
+            self.error = .unknown(message: error.localizedDescription)
+        }
+    }
+
     // MARK: - Computed Properties
 
     /// Whether there are any remotes.

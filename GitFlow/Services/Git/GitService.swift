@@ -355,6 +355,42 @@ actor GitService {
         return try command.parse(output: output)
     }
 
+    /// Adds a new remote.
+    func addRemote(name: String, url: String, in repository: Repository) async throws {
+        let command = AddRemoteCommand(name: name, url: url)
+        _ = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
+    }
+
+    /// Removes a remote.
+    func removeRemote(name: String, in repository: Repository) async throws {
+        let command = RemoveRemoteCommand(name: name)
+        _ = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
+    }
+
+    /// Renames a remote.
+    func renameRemote(oldName: String, newName: String, in repository: Repository) async throws {
+        let command = RenameRemoteCommand(oldName: oldName, newName: newName)
+        _ = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
+    }
+
+    /// Sets the URL of a remote.
+    func setRemoteURL(name: String, url: String, pushURL: Bool = false, in repository: Repository) async throws {
+        let command = SetRemoteURLCommand(name: name, url: url, pushURL: pushURL)
+        _ = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
+    }
+
     // MARK: - Tag Operations
 
     /// Gets all tags.

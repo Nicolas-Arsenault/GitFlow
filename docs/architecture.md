@@ -71,6 +71,7 @@ Protocol-based command pattern for Git operations:
 - `BranchCommand`: Branch listing and operations
 - `CommitCommand`: Commit creation
 - `StageCommand`: Staging/unstaging files
+- `RemoteCommand`: Remote management (add, remove, rename, set-url)
 
 #### Parsers
 Parse Git CLI output into model objects:
@@ -126,7 +127,10 @@ SwiftUI views that render the UI and bind to ViewModels.
 - `Diff/`: Diff visualization (Unified, Split)
 - `Commit/`: History and commit creation
 - `Branch/`: Branch management
-- `Shared/`: Reusable components
+- `Shared/`: Reusable components (LoadingView, ErrorView, ConfirmationDialog, AvatarView)
+
+**Shared Components:**
+- `AvatarView`: Displays user avatars in commit history. Uses Gravatar service to fetch images based on email hash, with an initials-based fallback showing colored circles with user initials for users without Gravatar accounts.
 
 ## Data Flow
 
