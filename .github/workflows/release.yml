@@ -1,0 +1,100 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  APP_NAME: GitFlow
+  SCHEME: GitFlow
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Create DMG
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update version in project
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          sed -i '' "s/MARKETING_VERSION = .*;/MARKETING_VERSION = $VERSION;/g" GitFlow.xcodeproj/project.pbxproj
+
+      - name: Build Release
+        run: |
+          xcodebuild -project GitFlow.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -configuration Release \
+            -derivedDataPath build \
+            -arch arm64 -arch x86_64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Create DMG
+        run: |
+          APP_PATH="build/Build/Products/Release/${{ env.APP_NAME }}.app"
+          DMG_NAME="${{ env.APP_NAME }}-${{ steps.version.outputs.version }}"
+
+          mkdir -p dmg_contents
+          cp -R "$APP_PATH" dmg_contents/
+          ln -s /Applications dmg_contents/Applications
+
+          hdiutil create -volname "${{ env.APP_NAME }}" \
+            -srcfolder dmg_contents \
+            -ov -format UDZO \
+            "${DMG_NAME}.dmg"
+
+          shasum -a 256 "${DMG_NAME}.dmg" > "${DMG_NAME}.dmg.sha256"
+
+          echo "DMG_PATH=${DMG_NAME}.dmg" >> $GITHUB_ENV
+          echo "SHA256_PATH=${DMG_NAME}.dmg.sha256" >> $GITHUB_ENV
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GitFlow-DMG
+          path: |
+            ${{ env.DMG_PATH }}
+            ${{ env.SHA256_PATH }}
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ env.DMG_PATH }}
+            ${{ env.SHA256_PATH }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
