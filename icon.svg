@@ -1,0 +1,40 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1e"/>
+      <stop offset="100%" style="stop-color:#0d0d0f"/>
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+    <linearGradient id="branchGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#06b6d4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect x="64" y="64" width="896" height="896" rx="180" ry="180" fill="url(#bgGradient)"/>
+
+  <!-- Subtle inner border -->
+  <rect x="64" y="64" width="896" height="896" rx="180" ry="180" fill="none" stroke="#27272a" stroke-width="2"/>
+
+  <!-- Main branch line (vertical) -->
+  <line x1="380" y1="280" x2="380" y2="744" stroke="url(#accentGradient)" stroke-width="40" stroke-linecap="round"/>
+
+  <!-- Feature branch line -->
+  <path d="M 380 420 Q 480 420 560 340 Q 640 260 700 340 Q 760 420 700 500 Q 640 580 560 580 Q 480 580 380 580"
+        fill="none" stroke="url(#branchGradient)" stroke-width="40" stroke-linecap="round"/>
+
+  <!-- Commit nodes on main branch -->
+  <circle cx="380" cy="320" r="48" fill="#1a1a1e" stroke="url(#accentGradient)" stroke-width="24"/>
+  <circle cx="380" cy="500" r="48" fill="#1a1a1e" stroke="url(#accentGradient)" stroke-width="24"/>
+  <circle cx="380" cy="680" r="48" fill="#1a1a1e" stroke="url(#accentGradient)" stroke-width="24"/>
+
+  <!-- Commit node on feature branch -->
+  <circle cx="700" cy="420" r="48" fill="#1a1a1e" stroke="#06b6d4" stroke-width="24"/>
+
+  <!-- Merge point highlight -->
+  <circle cx="380" cy="500" r="28" fill="url(#accentGradient)"/>
+</svg>
