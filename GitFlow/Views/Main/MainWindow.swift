@@ -12,7 +12,7 @@ struct MainWindow: View {
                 WelcomeView()
             }
         }
-        .frame(minWidth: 900, minHeight: 600)
+        .frame(minWidth: 1150, minHeight: 600)
         .alert(
             "Something went wrong",
             isPresented: .init(
@@ -153,7 +153,7 @@ struct RepositoryView: View {
                 selectedSection: $selectedSection,
                 viewModel: viewModel
             )
-            .frame(minWidth: 200)
+            .frame(minWidth: 240)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 0) {
                     Divider()
