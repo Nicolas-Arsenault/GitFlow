@@ -207,6 +207,13 @@ struct RepositoryView: View {
                 }
                 .help("Refresh")
                 .disabled(viewModel.isLoading)
+
+                Button(action: {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                }) {
+                    Image(systemName: "gearshape")
+                }
+                .help("Settings")
             }
         }
         .overlay {
