@@ -15,6 +15,9 @@ env:
   APP_NAME: GitFlow
   SCHEME: GitFlow
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build and Create DMG
