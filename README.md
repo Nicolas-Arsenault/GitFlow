@@ -8,18 +8,31 @@ A free, professional-grade Git GUI for macOS with best-in-class diff visualizati
 
 ## Install
 
-### Homebrew (Recommended)
+### Quick Install (Recommended)
+
+Run this command in Terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nicolas-Arsenault/GitFlow/main/scripts/install.sh | bash
+```
+
+This downloads, installs, and configures GitFlow automatically.
+
+### Homebrew
 
 ```bash
 brew tap nicolas-arsenault/tap
 brew install --cask gitflow-gui
 ```
 
-### Direct Download
+### Manual Download
 
-Download the latest DMG from [Releases](https://github.com/Nicolas-Arsenault/GitFlow/releases).
-
-> **Note:** On first launch, right-click the app and select "Open" (or run `xattr -cr /Applications/GitFlow.app` in Terminal) since the app isn't notarized yet.
+1. Download the latest DMG from [Releases](https://github.com/Nicolas-Arsenault/GitFlow/releases)
+2. Open the DMG and drag GitFlow to Applications
+3. Run this command to avoid security warnings:
+   ```bash
+   xattr -cr /Applications/GitFlow.app
+   ```
 
 ## Features
 

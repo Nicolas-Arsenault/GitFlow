@@ -19,6 +19,12 @@ struct GitFlowApp: App {
                 }
                 .keyboardShortcut("o", modifiers: .command)
 
+                Button("Close Repository") {
+                    appState.closeRepository()
+                }
+                .keyboardShortcut("w", modifiers: [.command, .shift])
+                .disabled(appState.currentRepository == nil)
+
                 Divider()
 
                 Menu("Recent Repositories") {

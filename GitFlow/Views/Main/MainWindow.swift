@@ -141,6 +141,7 @@ struct WelcomeView: View {
 
 /// Main repository view with navigation and content.
 struct RepositoryView: View {
+    @EnvironmentObject private var appState: AppState
     @ObservedObject var viewModel: RepositoryViewModel
 
     @State private var selectedSection: SidebarSection = .changes
@@ -152,6 +153,23 @@ struct RepositoryView: View {
                 viewModel: viewModel
             )
             .frame(minWidth: 200)
+            .safeAreaInset(edge: .bottom) {
+                Button(action: {
+                    appState.closeRepository()
+                }) {
+                    HStack(spacing: DSSpacing.iconTextSpacing) {
+                        Image(systemName: "chevron.left")
+                        Text("Change Repository")
+                    }
+                    .font(DSTypography.secondaryContent())
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, DSSpacing.md)
+                    .padding(.vertical, DSSpacing.sm)
+                }
+                .buttonStyle(.plain)
+                .background(Color(NSColor.separatorColor).opacity(0.1))
+            }
         } detail: {
             ContentArea(
                 selectedSection: selectedSection,
@@ -160,6 +178,15 @@ struct RepositoryView: View {
         }
         .navigationTitle(viewModel.repository.name)
         .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                Button(action: {
+                    appState.closeRepository()
+                }) {
+                    Image(systemName: "folder.badge.gearshape")
+                }
+                .help("Change Repository")
+            }
+
             ToolbarItemGroup(placement: .primaryAction) {
                 if let branch = viewModel.currentBranch {
                     HStack(spacing: 4) {
