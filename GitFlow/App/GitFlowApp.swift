@@ -5,6 +5,23 @@ import SwiftUI
 @main
 struct GitFlowApp: App {
     @StateObject private var appState = AppState()
+    @AppStorage("com.gitflow.theme") private var theme: String = "system"
+
+    init() {
+        // Apply saved theme on launch
+        applyTheme()
+    }
+
+    private func applyTheme() {
+        switch theme {
+        case "light":
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark":
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        default:
+            NSApp.appearance = nil
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

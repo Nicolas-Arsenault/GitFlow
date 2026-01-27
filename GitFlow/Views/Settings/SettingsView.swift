@@ -23,13 +23,51 @@ struct SettingsView: View {
     }
 }
 
+/// Theme options for the app.
+enum AppTheme: String, CaseIterable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+
+    var appearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
 /// General application settings.
 struct GeneralSettingsView: View {
     @AppStorage("com.gitflow.showRemoteBranches") private var showRemoteBranches: Bool = true
     @AppStorage("com.gitflow.confirmDestructiveActions") private var confirmDestructiveActions: Bool = true
+    @AppStorage("com.gitflow.theme") private var theme: String = "system"
 
     var body: some View {
         Form {
+            Section {
+                Picker("Appearance", selection: $theme) {
+                    ForEach(AppTheme.allCases, id: \.rawValue) { appTheme in
+                        Text(appTheme.displayName).tag(appTheme.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: theme) { newValue in
+                    applyTheme(newValue)
+                }
+            } header: {
+                Text("Theme")
+            }
+
             Section {
                 Toggle("Show remote branches in branch list", isOn: $showRemoteBranches)
                 Toggle("Confirm destructive actions", isOn: $confirmDestructiveActions)
@@ -39,6 +77,14 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .onAppear {
+            applyTheme(theme)
+        }
+    }
+
+    private func applyTheme(_ themeValue: String) {
+        let appTheme = AppTheme(rawValue: themeValue) ?? .system
+        NSApp.appearance = appTheme.appearance
     }
 }
 
