@@ -145,6 +145,7 @@ struct RepositoryView: View {
     @ObservedObject var viewModel: RepositoryViewModel
 
     @State private var selectedSection: SidebarSection = .changes
+    @State private var showSettings: Bool = false
 
     var body: some View {
         NavigationSplitView {
@@ -209,7 +210,7 @@ struct RepositoryView: View {
                 .disabled(viewModel.isLoading)
 
                 Button(action: {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    showSettings = true
                 }) {
                     Image(systemName: "gearshape")
                 }
@@ -223,6 +224,9 @@ struct RepositoryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .padding()
             }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(showDismissButton: true)
         }
     }
 }

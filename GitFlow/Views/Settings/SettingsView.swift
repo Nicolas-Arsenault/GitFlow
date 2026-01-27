@@ -2,24 +2,43 @@ import SwiftUI
 
 /// Main settings view.
 struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    var showDismissButton: Bool = false
+
     var body: some View {
-        TabView {
-            GeneralSettingsView()
-                .tabItem {
-                    Label("General", systemImage: "gear")
+        VStack(spacing: 0) {
+            if showDismissButton {
+                HStack {
+                    Text("Settings")
+                        .font(.headline)
+                    Spacer()
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
+                .padding()
+                Divider()
+            }
 
-            DiffSettingsView()
-                .tabItem {
-                    Label("Diff", systemImage: "text.alignleft")
-                }
+            TabView {
+                GeneralSettingsView()
+                    .tabItem {
+                        Label("General", systemImage: "gear")
+                    }
 
-            GitSettingsView()
-                .tabItem {
-                    Label("Git", systemImage: "chevron.left.forwardslash.chevron.right")
-                }
+                DiffSettingsView()
+                    .tabItem {
+                        Label("Diff", systemImage: "text.alignleft")
+                    }
+
+                GitSettingsView()
+                    .tabItem {
+                        Label("Git", systemImage: "chevron.left.forwardslash.chevron.right")
+                    }
+            }
         }
-        .frame(width: 450, height: 300)
+        .frame(width: 450, height: showDismissButton ? 350 : 300)
     }
 }
 
