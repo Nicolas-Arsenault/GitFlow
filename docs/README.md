@@ -38,27 +38,44 @@ A free, professional-grade Git GUI for macOS built with Swift and SwiftUI, featu
 
 ## Installation
 
+### Download DMG (Recommended)
+
+1. Go to the [Releases page](https://github.com/Nicolas-Arsenault/GitFlow/releases)
+2. Download the latest `GitFlow-x.x.x.dmg`
+3. Open the DMG and drag GitFlow to Applications
+4. On first launch, right-click and select "Open" (required for unsigned apps)
+
+### Homebrew
+
+```bash
+brew tap nicolas-arsenault/tap
+brew install --cask gitflow
+```
+
+To update:
+```bash
+brew upgrade --cask gitflow
+```
+
 ### Building from Source
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/GitFlow.git
+   git clone https://github.com/Nicolas-Arsenault/GitFlow.git
    cd GitFlow
    ```
 
-2. Open in Xcode:
+2. **Option A**: Open in Xcode:
    ```bash
    open GitFlow.xcodeproj
    ```
+   Then build and run (⌘R)
 
-3. Build and run (⌘R)
-
-### Using Swift Package Manager
-
-```bash
-swift build
-swift run GitFlow
-```
+3. **Option B**: Build DMG from command line:
+   ```bash
+   ./scripts/build-dmg.sh
+   ```
+   This creates a universal binary (arm64 + x86_64) DMG file.
 
 ## Usage
 
