@@ -12,7 +12,7 @@ A free, professional-grade Git GUI for macOS with best-in-class diff visualizati
 
 ```bash
 brew tap nicolas-arsenault/tap
-brew install --cask gitflow
+brew install --cask gitflow-gui
 ```
 
 ### Direct Download

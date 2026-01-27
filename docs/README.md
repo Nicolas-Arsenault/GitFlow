@@ -57,7 +57,7 @@ A free, professional-grade Git GUI for macOS built with Swift and SwiftUI, featu
 
 ```bash
 brew tap nicolas-arsenault/tap
-brew install --cask gitflow
+brew install --cask gitflow-gui
 ```
 
 To update:
