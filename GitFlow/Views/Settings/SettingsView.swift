@@ -81,11 +81,6 @@ struct GeneralSettingsView: View {
             applyTheme(theme)
         }
     }
-
-    private func applyTheme(_ themeValue: String) {
-        let appTheme = AppTheme(rawValue: themeValue) ?? .system
-        NSApp.appearance = appTheme.appearance
-    }
 }
 
 /// Diff display settings.
