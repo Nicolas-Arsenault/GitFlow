@@ -38,8 +38,8 @@ struct CommitCreationView: View {
                         Text("Enter commit message...")
                             .font(.system(.body, design: .monospaced))
                             .foregroundStyle(.tertiary)
-                            .padding(.leading, 9)
-                            .padding(.top, 12)
+                            .padding(.leading, 5)
+                            .padding(.top, 8)
                             .allowsHitTesting(false)
                     }
                 }
