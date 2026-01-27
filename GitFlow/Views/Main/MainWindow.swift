@@ -12,7 +12,7 @@ struct MainWindow: View {
                 WelcomeView()
             }
         }
-        .frame(minWidth: 1150, minHeight: 600)
+        .frame(minWidth: 1200, minHeight: 600)
         .alert(
             "Something went wrong",
             isPresented: .init(
