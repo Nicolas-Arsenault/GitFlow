@@ -7,7 +7,7 @@
 set -e
 
 APP_NAME="GitFlow"
-VERSION="1.0.4"
+VERSION="1.0.5"
 DMG_URL="https://github.com/Nicolas-Arsenault/GitFlow/releases/download/v${VERSION}/GitFlow-${VERSION}.dmg"
 DMG_FILE="/tmp/GitFlow-${VERSION}.dmg"
 MOUNT_POINT="/Volumes/GitFlow"
