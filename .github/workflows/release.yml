@@ -44,7 +44,6 @@ jobs:
       - name: Update version in project
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          # Update marketing version
           sed -i '' "s/MARKETING_VERSION = .*;/MARKETING_VERSION = $VERSION;/g" GitFlow.xcodeproj/project.pbxproj
 
       - name: Build Release
@@ -65,20 +64,15 @@ jobs:
           APP_PATH="build/Build/Products/Release/${{ env.APP_NAME }}.app"
           DMG_NAME="${{ env.APP_NAME }}-${{ steps.version.outputs.version }}"
 
-          # Create temporary directory for DMG contents
           mkdir -p dmg_contents
           cp -R "$APP_PATH" dmg_contents/
-
-          # Create Applications symlink
           ln -s /Applications dmg_contents/Applications
 
-          # Create DMG
           hdiutil create -volname "${{ env.APP_NAME }}" \
             -srcfolder dmg_contents \
             -ov -format UDZO \
             "${DMG_NAME}.dmg"
 
-          # Calculate SHA256
           shasum -a 256 "${DMG_NAME}.dmg" > "${DMG_NAME}.dmg.sha256"
 
           echo "DMG_PATH=${DMG_NAME}.dmg" >> $GITHUB_ENV
@@ -104,72 +98,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  update-homebrew:
-    name: Update Homebrew Cask
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Determine version
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Download SHA256
-        uses: actions/download-artifact@v4
-        with:
-          name: GitFlow-DMG
-
-      - name: Get SHA256
-        id: sha256
-        run: |
-          SHA=$(cat GitFlow-${{ steps.version.outputs.version }}.dmg.sha256 | awk '{print $1}')
-          echo "sha256=$SHA" >> $GITHUB_OUTPUT
-
-      - name: Checkout Homebrew tap
-        uses: actions/checkout@v4
-        with:
-          repository: Nicolas-Arsenault/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: homebrew-tap
-
-      - name: Update Cask formula
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          SHA256=${{ steps.sha256.outputs.sha256 }}
-
-          cat > homebrew-tap/Casks/gitflow.rb << 'EOF'
-          cask "gitflow" do
-            version "$VERSION"
-            sha256 "$SHA256"
-
-            url "https://github.com/Nicolas-Arsenault/GitFlow/releases/download/v#{version}/GitFlow-#{version}.dmg"
-            name "GitFlow"
-            desc "Free, professional-grade Git GUI for macOS"
-            homepage "https://nicolas-arsenault.github.io/gitflow-website/"
-
-            depends_on macos: ">= :ventura"
-
-            app "GitFlow.app"
-
-            zap trash: [
-              "~/Library/Application Support/GitFlow",
-              "~/Library/Caches/com.gitflow.GitFlow",
-              "~/Library/Preferences/com.gitflow.GitFlow.plist",
-            ]
-          end
-          EOF
-
-          # Replace placeholders
-          sed -i "s/\$VERSION/$VERSION/g" homebrew-tap/Casks/gitflow.rb
-          sed -i "s/\$SHA256/$SHA256/g" homebrew-tap/Casks/gitflow.rb
-
-      - name: Commit and push
-        run: |
-          cd homebrew-tap
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add Casks/gitflow.rb
-          git commit -m "Update gitflow to ${{ steps.version.outputs.version }}"
-          git push
