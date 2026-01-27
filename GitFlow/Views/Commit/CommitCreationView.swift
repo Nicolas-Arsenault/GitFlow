@@ -29,13 +29,17 @@ struct CommitCreationView: View {
                 .font(.system(.body, design: .monospaced))
                 .frame(minHeight: 80, maxHeight: 150)
                 .focused($isMessageFocused)
-                .padding(.horizontal, 4)
+                .scrollContentBackground(.hidden)
+                .padding(4)
+                .background(Color(NSColor.textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
                 .overlay(alignment: .topLeading) {
                     if viewModel.commitMessage.isEmpty {
                         Text("Enter commit message...")
+                            .font(.system(.body, design: .monospaced))
                             .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 8)
+                            .padding(.leading, 9)
+                            .padding(.top, 12)
                             .allowsHitTesting(false)
                     }
                 }

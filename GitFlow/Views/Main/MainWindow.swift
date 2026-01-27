@@ -154,21 +154,24 @@ struct RepositoryView: View {
             )
             .frame(minWidth: 200)
             .safeAreaInset(edge: .bottom) {
-                Button(action: {
-                    appState.closeRepository()
-                }) {
-                    HStack(spacing: DSSpacing.iconTextSpacing) {
-                        Image(systemName: "chevron.left")
-                        Text("Change Repository")
+                VStack(spacing: 0) {
+                    Divider()
+                    Button(action: {
+                        appState.closeRepository()
+                    }) {
+                        HStack(spacing: DSSpacing.iconTextSpacing) {
+                            Image(systemName: "chevron.left")
+                            Text("Change Repository")
+                        }
+                        .font(DSTypography.secondaryContent())
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, DSSpacing.md)
+                        .padding(.vertical, DSSpacing.md)
                     }
-                    .font(DSTypography.secondaryContent())
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, DSSpacing.md)
-                    .padding(.vertical, DSSpacing.sm)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                .background(Color(NSColor.separatorColor).opacity(0.1))
+                .background(Color(NSColor.windowBackgroundColor))
             }
         } detail: {
             ContentArea(
@@ -182,7 +185,7 @@ struct RepositoryView: View {
                 Button(action: {
                     appState.closeRepository()
                 }) {
-                    Image(systemName: "folder.badge.gearshape")
+                    Image(systemName: "folder")
                 }
                 .help("Change Repository")
             }
