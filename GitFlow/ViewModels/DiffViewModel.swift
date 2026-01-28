@@ -109,15 +109,26 @@ final class DiffViewModel: ObservableObject {
     /// Loads diff for a file status.
     func loadDiff(for fileStatus: FileStatus) async {
         isLoading = true
-        defer { isLoading = false }
 
         do {
-            if fileStatus.isStaged {
-                diffSource = .staged(path: fileStatus.path)
-                allDiffs = try await gitService.getStagedDiff(in: repository, filePath: fileStatus.path, options: currentDiffOptions)
+            let isStaged = fileStatus.isStaged
+            let path = fileStatus.path
+            let options = currentDiffOptions
+
+            if isStaged {
+                diffSource = .staged(path: path)
+                // Load diff in background to avoid blocking UI during parsing
+                let diffs = try await Task.detached(priority: .userInitiated) { [gitService, repository] in
+                    try await gitService.getStagedDiff(in: repository, filePath: path, options: options)
+                }.value
+                allDiffs = diffs
             } else {
-                diffSource = .unstaged(path: fileStatus.path)
-                allDiffs = try await gitService.getUnstagedDiff(in: repository, filePath: fileStatus.path, options: currentDiffOptions)
+                diffSource = .unstaged(path: path)
+                // Load diff in background to avoid blocking UI during parsing
+                let diffs = try await Task.detached(priority: .userInitiated) { [gitService, repository] in
+                    try await gitService.getUnstagedDiff(in: repository, filePath: path, options: options)
+                }.value
+                allDiffs = diffs
             }
 
             currentDiff = allDiffs.first
@@ -133,6 +144,8 @@ final class DiffViewModel: ObservableObject {
             self.error = .unknown(message: error.localizedDescription)
             clearDiff()
         }
+
+        isLoading = false
     }
 
     /// Loads staged diff for a file.
@@ -182,11 +195,15 @@ final class DiffViewModel: ObservableObject {
     /// Loads diff for a commit.
     func loadCommitDiff(for commitHash: String) async {
         isLoading = true
-        defer { isLoading = false }
 
         do {
             diffSource = .commit(hash: commitHash)
-            allDiffs = try await gitService.getCommitDiff(commitHash: commitHash, in: repository, options: currentDiffOptions)
+            // Load diff in background to avoid blocking UI during parsing
+            let options = currentDiffOptions
+            let diffs = try await Task.detached(priority: .userInitiated) { [gitService, repository] in
+                try await gitService.getCommitDiff(commitHash: commitHash, in: repository, options: options)
+            }.value
+            allDiffs = diffs
             currentDiff = allDiffs.first
             updateHunkCount(currentDiff?.hunks.count ?? 0)
             focusedHunkIndex = 0
@@ -199,6 +216,8 @@ final class DiffViewModel: ObservableObject {
             self.error = .unknown(message: error.localizedDescription)
             clearDiff()
         }
+
+        isLoading = false
     }
 
     /// Selects a specific file diff from the loaded diffs.

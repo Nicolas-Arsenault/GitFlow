@@ -69,13 +69,36 @@ actor GitExecutor {
             }
         }
 
-        // Wait for completion
+        // Read output BEFORE waitUntilExit to avoid pipe buffer deadlock.
+        // When output is large, the pipe buffer fills up and the process blocks
+        // waiting for buffer space. If we wait for exit first, we deadlock.
+        var stdoutData = Data()
+        var stderrData = Data()
+
+        let stdoutHandle = stdoutPipe.fileHandleForReading
+        let stderrHandle = stderrPipe.fileHandleForReading
+
+        // Read both pipes concurrently to prevent deadlock
+        let readGroup = DispatchGroup()
+
+        readGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            stdoutData = stdoutHandle.readDataToEndOfFile()
+            readGroup.leave()
+        }
+
+        readGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            stderrData = stderrHandle.readDataToEndOfFile()
+            readGroup.leave()
+        }
+
+        // Wait for reads to complete
+        readGroup.wait()
+
+        // Now wait for process to exit (should be immediate since pipes are drained)
         process.waitUntilExit()
         timeoutTask.cancel()
-
-        // Read output
-        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
 
         let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
         let stderr = String(data: stderrData, encoding: .utf8) ?? ""
@@ -135,13 +158,30 @@ actor GitExecutor {
             }
         }
 
-        // Wait for completion
+        // Read output BEFORE waitUntilExit to avoid pipe buffer deadlock
+        var stdoutData = Data()
+        var stderrData = Data()
+
+        let stdoutHandle = stdoutPipe.fileHandleForReading
+        let stderrHandle = stderrPipe.fileHandleForReading
+
+        let readGroup = DispatchGroup()
+
+        readGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            stdoutData = stdoutHandle.readDataToEndOfFile()
+            readGroup.leave()
+        }
+
+        readGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            stderrData = stderrHandle.readDataToEndOfFile()
+            readGroup.leave()
+        }
+
+        readGroup.wait()
         process.waitUntilExit()
         timeoutTask.cancel()
-
-        // Read output
-        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
 
         let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
         let stderr = String(data: stderrData, encoding: .utf8) ?? ""
@@ -250,13 +290,30 @@ actor GitExecutor {
             }
         }
 
-        // Wait for completion
+        // Read output BEFORE waitUntilExit to avoid pipe buffer deadlock
+        var stdoutData = Data()
+        var stderrData = Data()
+
+        let stdoutHandle = stdoutPipe.fileHandleForReading
+        let stderrHandle = stderrPipe.fileHandleForReading
+
+        let readGroup = DispatchGroup()
+
+        readGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            stdoutData = stdoutHandle.readDataToEndOfFile()
+            readGroup.leave()
+        }
+
+        readGroup.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            stderrData = stderrHandle.readDataToEndOfFile()
+            readGroup.leave()
+        }
+
+        readGroup.wait()
         process.waitUntilExit()
         timeoutTask.cancel()
-
-        // Read output
-        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
 
         let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
         let stderr = String(data: stderrData, encoding: .utf8) ?? ""

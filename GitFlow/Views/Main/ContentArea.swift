@@ -128,6 +128,11 @@ struct ChangesView: View {
             DiffView(viewModel: diffViewModel, isFullscreen: $isDiffFullscreen)
                 .frame(minWidth: 400)
         }
+        .task(id: statusViewModel.selectedFile?.id) {
+            if let file = statusViewModel.selectedFile {
+                await diffViewModel.loadDiff(for: file)
+            }
+        }
     }
 }
 

@@ -2,8 +2,8 @@ import Foundation
 
 /// Represents the diff for a single file.
 struct FileDiff: Identifiable, Equatable {
-    /// Unique identifier.
-    let id: String
+    /// Unique identifier based on file path (no UUID needed).
+    var id: String { path }
 
     /// The file path (new path for renamed files).
     let path: String
@@ -32,15 +32,17 @@ struct FileDiff: Identifiable, Equatable {
     /// The new blob hash.
     let newHash: String?
 
+    /// Cached addition count for performance.
+    private let _additions: Int
+
+    /// Cached deletion count for performance.
+    private let _deletions: Int
+
     /// Total number of additions.
-    var additions: Int {
-        hunks.reduce(0) { $0 + $1.additionCount }
-    }
+    var additions: Int { _additions }
 
     /// Total number of deletions.
-    var deletions: Int {
-        hunks.reduce(0) { $0 + $1.deletionCount }
-    }
+    var deletions: Int { _deletions }
 
     /// The file name without directory.
     var fileName: String {
@@ -60,7 +62,6 @@ struct FileDiff: Identifiable, Equatable {
 
     /// Creates a FileDiff.
     init(
-        id: String = UUID().uuidString,
         path: String,
         oldPath: String? = nil,
         changeType: FileChangeType = .modified,
@@ -71,7 +72,6 @@ struct FileDiff: Identifiable, Equatable {
         oldHash: String? = nil,
         newHash: String? = nil
     ) {
-        self.id = id
         self.path = path
         self.oldPath = oldPath
         self.changeType = changeType
@@ -81,6 +81,9 @@ struct FileDiff: Identifiable, Equatable {
         self.newMode = newMode
         self.oldHash = oldHash
         self.newHash = newHash
+        // Cache counts at initialization for performance
+        self._additions = hunks.reduce(0) { $0 + $1.additions }
+        self._deletions = hunks.reduce(0) { $0 + $1.deletions }
     }
 
     /// Creates an empty diff for a file.

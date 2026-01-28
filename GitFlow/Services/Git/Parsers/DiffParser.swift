@@ -9,15 +9,12 @@ enum DiffParser {
         guard !output.isEmpty else { return [] }
 
         var fileDiffs: [FileDiff] = []
-        let lines = output.components(separatedBy: "\n")
 
         var currentFile: FileDiffBuilder?
         var currentHunk: DiffHunkBuilder?
-        var lineIndex = 0
 
-        while lineIndex < lines.count {
-            let line = lines[lineIndex]
-
+        // Use enumerateLines for better memory efficiency with large diffs
+        output.enumerateLines { line, _ in
             // New file diff header
             if line.hasPrefix("diff --git") {
                 // Save current file if exists
@@ -96,8 +93,6 @@ enum DiffParser {
                     hunk.markNoNewline()
                 }
             }
-
-            lineIndex += 1
         }
 
         // Save final file and hunk
@@ -125,17 +120,22 @@ private class FileDiffBuilder {
     var oldHash: String?
     var newHash: String?
 
+    // Static regex to avoid recompilation for each diff
+    private static let diffHeaderRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"^diff --git a/(.+) b/(.+)$"#)
+    }()
+
     func parseDiffHeader(_ line: String) {
         // Format: diff --git a/path b/path
-        let pattern = #"^diff --git a/(.+) b/(.+)$"#
-        if let regex = try? NSRegularExpression(pattern: pattern),
-           let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) {
-            if let oldRange = Range(match.range(at: 1), in: line) {
-                oldPath = String(line[oldRange])
-            }
-            if let newRange = Range(match.range(at: 2), in: line) {
-                path = String(line[newRange])
-            }
+        guard let regex = Self.diffHeaderRegex,
+              let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) else {
+            return
+        }
+        if let oldRange = Range(match.range(at: 1), in: line) {
+            oldPath = String(line[oldRange])
+        }
+        if let newRange = Range(match.range(at: 2), in: line) {
+            path = String(line[newRange])
         }
     }
 

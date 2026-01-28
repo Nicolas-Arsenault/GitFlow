@@ -3,8 +3,8 @@ import Foundation
 /// Represents a single hunk in a diff.
 /// A hunk is a contiguous block of changes with context lines.
 struct DiffHunk: Identifiable, Equatable {
-    /// Unique identifier for this hunk.
-    let id: String
+    /// Unique identifier for this hunk based on line numbers (no UUID needed).
+    var id: String { "\(oldStart)-\(newStart)" }
 
     /// The starting line number in the old file.
     let oldStart: Int
@@ -27,19 +27,20 @@ struct DiffHunk: Identifiable, Equatable {
     /// The raw hunk header line from Git.
     let rawHeader: String
 
-    /// Number of additions in this hunk.
-    var additionCount: Int {
-        lines.filter { $0.type == .addition }.count
-    }
+    /// Cached addition count for performance.
+    let additions: Int
 
-    /// Number of deletions in this hunk.
-    var deletionCount: Int {
-        lines.filter { $0.type == .deletion }.count
-    }
+    /// Cached deletion count for performance.
+    let deletions: Int
+
+    /// Number of additions in this hunk (legacy name for compatibility).
+    var additionCount: Int { additions }
+
+    /// Number of deletions in this hunk (legacy name for compatibility).
+    var deletionCount: Int { deletions }
 
     /// Creates a DiffHunk.
     init(
-        id: String = UUID().uuidString,
         oldStart: Int,
         oldCount: Int,
         newStart: Int,
@@ -48,7 +49,6 @@ struct DiffHunk: Identifiable, Equatable {
         lines: [DiffLine] = [],
         rawHeader: String = ""
     ) {
-        self.id = id
         self.oldStart = oldStart
         self.oldCount = oldCount
         self.newStart = newStart
@@ -56,15 +56,29 @@ struct DiffHunk: Identifiable, Equatable {
         self.header = header
         self.lines = lines
         self.rawHeader = rawHeader
+        // Cache counts at initialization for performance
+        var adds = 0
+        var dels = 0
+        for line in lines {
+            switch line.type {
+            case .addition: adds += 1
+            case .deletion: dels += 1
+            default: break
+            }
+        }
+        self.additions = adds
+        self.deletions = dels
     }
+
+    /// Static regex for parsing hunk headers (compiled once).
+    private static let hunkHeaderRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$"#)
+    }()
 
     /// Parses a hunk header line.
     /// Format: @@ -old_start,old_count +new_start,new_count @@ optional_header
     static func parseHeader(_ line: String) -> (oldStart: Int, oldCount: Int, newStart: Int, newCount: Int, header: String)? {
-        // Pattern: @@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)
-        let pattern = #"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$"#
-
-        guard let regex = try? NSRegularExpression(pattern: pattern),
+        guard let regex = hunkHeaderRegex,
               let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) else {
             return nil
         }
