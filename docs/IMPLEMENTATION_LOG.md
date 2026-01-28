@@ -190,3 +190,42 @@
 - `CommitOptions` - Full commit options struct
 - `LogFilterOptions` - History filter options struct
 
+---
+
+### Phase 3: Diff Visualization Enhancements (Completed)
+
+**Date**: 2026-01-27
+
+**Files Modified**:
+- `GitFlow/Services/Git/Commands/DiffCommand.swift` - Added diff options, blame, patch commands
+- `GitFlow/Services/Git/GitService.swift` - Added blame, patch, revert methods
+- `GitFlow/ViewModels/DiffViewModel.swift` - Added whitespace, blame, clipboard, navigation
+- `GitFlow/Views/Diff/DiffToolbar.swift` - Added new controls and options menu
+
+**Features Implemented**:
+- [x] Ignore whitespace changes option
+- [x] Ignore blank lines option
+- [x] Show whitespace characters toggle
+- [x] Context lines configuration
+- [x] Inline blame annotations
+- [x] Copy diff/patch to clipboard
+- [x] Copy hunk to clipboard
+- [x] Open file in external editor
+- [x] Reveal file in Finder
+- [x] Navigate to next/previous hunk
+- [x] Hunk count and navigation indicator
+- [x] Reload diff with new options
+
+**New Commands**:
+- `BlameCommand` - Get blame information for file
+- `GenerateStagedPatchCommand` - Generate patch for staged changes
+- `GenerateUnstagedPatchCommand` - Generate patch for unstaged changes
+- `GenerateCommitPatchCommand` - Generate patch for commit
+- `RevertFilesCommand` - Revert changes in files
+- `RevertHunkCommand` - Revert specific hunk
+
+**New Models**:
+- `DiffOptions` - Options for diff display (whitespace, context, etc.)
+- `BlameLine` - Single line of blame output
+- `BlameParser` - Parser for git blame output
+

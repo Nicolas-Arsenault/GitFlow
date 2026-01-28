@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// View model for diff display and operations.
 @MainActor
@@ -50,6 +51,30 @@ final class DiffViewModel: ObservableObject {
     /// Whether to wrap long lines.
     @Published var wrapLines: Bool = false
 
+    /// Whether to show whitespace characters.
+    @Published var showWhitespace: Bool = false
+
+    /// Whether to ignore whitespace changes in diff.
+    @Published var ignoreWhitespace: Bool = false
+
+    /// Whether to ignore blank lines in diff.
+    @Published var ignoreBlankLines: Bool = false
+
+    /// Blame information for the current file.
+    @Published private(set) var blameLines: [BlameLine] = []
+
+    /// Whether blame is currently loading.
+    @Published private(set) var isBlameLoading: Bool = false
+
+    /// Whether to show inline blame annotations.
+    @Published var showBlame: Bool = false
+
+    /// The index of the currently focused hunk.
+    @Published var focusedHunkIndex: Int = 0
+
+    /// Total number of hunks in the current diff.
+    @Published private(set) var totalHunks: Int = 0
+
     // MARK: - Dependencies
 
     private let repository: Repository
@@ -62,6 +87,17 @@ final class DiffViewModel: ObservableObject {
         self.gitService = gitService
     }
 
+    // MARK: - Diff Options
+
+    /// Current diff options based on settings.
+    var currentDiffOptions: DiffOptions {
+        var options = DiffOptions()
+        options.ignoreWhitespace = ignoreWhitespace
+        options.ignoreBlankLines = ignoreBlankLines
+        options.contextLines = contextLines
+        return options
+    }
+
     // MARK: - Public Methods
 
     /// Loads diff for a file status.
@@ -72,13 +108,16 @@ final class DiffViewModel: ObservableObject {
         do {
             if fileStatus.isStaged {
                 diffSource = .staged(path: fileStatus.path)
-                allDiffs = try await gitService.getStagedDiff(in: repository, filePath: fileStatus.path)
+                allDiffs = try await gitService.getStagedDiff(in: repository, filePath: fileStatus.path, options: currentDiffOptions)
             } else {
                 diffSource = .unstaged(path: fileStatus.path)
-                allDiffs = try await gitService.getUnstagedDiff(in: repository, filePath: fileStatus.path)
+                allDiffs = try await gitService.getUnstagedDiff(in: repository, filePath: fileStatus.path, options: currentDiffOptions)
             }
 
             currentDiff = allDiffs.first
+            updateHunkCount(currentDiff?.hunks.count ?? 0)
+            focusedHunkIndex = 0
+            clearBlame()
             error = nil
 
         } catch let gitError as GitError {
@@ -97,8 +136,11 @@ final class DiffViewModel: ObservableObject {
 
         do {
             diffSource = .staged(path: path)
-            allDiffs = try await gitService.getStagedDiff(in: repository, filePath: path)
+            allDiffs = try await gitService.getStagedDiff(in: repository, filePath: path, options: currentDiffOptions)
             currentDiff = allDiffs.first
+            updateHunkCount(currentDiff?.hunks.count ?? 0)
+            focusedHunkIndex = 0
+            clearBlame()
             error = nil
         } catch let gitError as GitError {
             error = gitError
@@ -116,8 +158,11 @@ final class DiffViewModel: ObservableObject {
 
         do {
             diffSource = .unstaged(path: path)
-            allDiffs = try await gitService.getUnstagedDiff(in: repository, filePath: path)
+            allDiffs = try await gitService.getUnstagedDiff(in: repository, filePath: path, options: currentDiffOptions)
             currentDiff = allDiffs.first
+            updateHunkCount(currentDiff?.hunks.count ?? 0)
+            focusedHunkIndex = 0
+            clearBlame()
             error = nil
         } catch let gitError as GitError {
             error = gitError
@@ -135,8 +180,11 @@ final class DiffViewModel: ObservableObject {
 
         do {
             diffSource = .commit(hash: commitHash)
-            allDiffs = try await gitService.getCommitDiff(commitHash: commitHash, in: repository)
+            allDiffs = try await gitService.getCommitDiff(commitHash: commitHash, in: repository, options: currentDiffOptions)
             currentDiff = allDiffs.first
+            updateHunkCount(currentDiff?.hunks.count ?? 0)
+            focusedHunkIndex = 0
+            clearBlame()
             error = nil
         } catch let gitError as GitError {
             error = gitError
@@ -162,6 +210,112 @@ final class DiffViewModel: ObservableObject {
     /// Toggles between unified and split view modes.
     func toggleViewMode() {
         viewMode = viewMode == .unified ? .split : .unified
+    }
+
+    /// Reloads the current diff with updated options.
+    func reloadWithOptions() async {
+        switch diffSource {
+        case .staged(let path):
+            await loadStagedDiff(for: path)
+        case .unstaged(let path):
+            await loadUnstagedDiff(for: path)
+        case .commit(let hash):
+            await loadCommitDiff(for: hash)
+        case .none:
+            break
+        }
+    }
+
+    // MARK: - Blame Operations
+
+    /// Loads blame information for the current file.
+    func loadBlame() async {
+        guard let diff = currentDiff else { return }
+
+        isBlameLoading = true
+        defer { isBlameLoading = false }
+
+        do {
+            blameLines = try await gitService.getBlame(for: diff.path, in: repository)
+        } catch {
+            // Silently fail - blame is optional
+            blameLines = []
+        }
+    }
+
+    /// Clears blame information.
+    func clearBlame() {
+        blameLines = []
+        showBlame = false
+    }
+
+    // MARK: - Navigation
+
+    /// Navigates to the next hunk.
+    func navigateToNextHunk() {
+        guard totalHunks > 0 else { return }
+        focusedHunkIndex = (focusedHunkIndex + 1) % totalHunks
+    }
+
+    /// Navigates to the previous hunk.
+    func navigateToPreviousHunk() {
+        guard totalHunks > 0 else { return }
+        focusedHunkIndex = (focusedHunkIndex - 1 + totalHunks) % totalHunks
+    }
+
+    /// Updates the total hunk count (called by views).
+    func updateHunkCount(_ count: Int) {
+        totalHunks = count
+        if focusedHunkIndex >= count {
+            focusedHunkIndex = max(0, count - 1)
+        }
+    }
+
+    // MARK: - Clipboard Operations
+
+    /// Copies the current diff to the clipboard.
+    func copyDiffToClipboard() async {
+        do {
+            let patch: String
+            switch diffSource {
+            case .staged(let path):
+                patch = try await gitService.getStagedPatch(in: repository, filePath: path)
+            case .unstaged(let path):
+                patch = try await gitService.getUnstagedPatch(in: repository, filePath: path)
+            case .commit(let hash):
+                patch = try await gitService.getCommitPatch(commitHash: hash, in: repository)
+            case .none:
+                return
+            }
+
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(patch, forType: .string)
+        } catch {
+            // Silently fail
+        }
+    }
+
+    /// Copies a specific hunk to the clipboard.
+    func copyHunkToClipboard(_ hunk: DiffHunk, filePath: String) {
+        let patch = hunk.toPatchString(filePath: filePath)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(patch, forType: .string)
+    }
+
+    // MARK: - File Operations
+
+    /// Opens the current file in the default external editor.
+    func openInExternalEditor() {
+        guard let diff = currentDiff else { return }
+        let fileURL = repository.rootURL.appendingPathComponent(diff.path)
+        NSWorkspace.shared.open(fileURL)
+    }
+
+    /// Reveals the current file in Finder.
+    func revealInFinder() {
+        guard let diff = currentDiff else { return }
+        let fileURL = repository.rootURL.appendingPathComponent(diff.path)
+        NSWorkspace.shared.selectFile(fileURL.path, inFileViewerRootedAtPath: "")
     }
 
     // MARK: - Hunk-Level Staging

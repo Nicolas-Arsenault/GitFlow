@@ -26,6 +26,31 @@ struct DiffToolbar: View {
 
             // Controls
             if viewModel.hasDiff {
+                // Hunk navigation
+                if viewModel.totalHunks > 1 {
+                    HStack(spacing: 2) {
+                        Button(action: { viewModel.navigateToPreviousHunk() }) {
+                            Image(systemName: "chevron.up")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Previous change")
+
+                        Text("\(viewModel.focusedHunkIndex + 1)/\(viewModel.totalHunks)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 30)
+
+                        Button(action: { viewModel.navigateToNextHunk() }) {
+                            Image(systemName: "chevron.down")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Next change")
+                    }
+
+                    Divider()
+                        .frame(height: 16)
+                }
+
                 // Stats
                 HStack(spacing: 8) {
                     if let diff = viewModel.currentDiff {
@@ -51,6 +76,19 @@ struct DiffToolbar: View {
                 .labelsHidden()
                 .frame(width: 120)
 
+                // Blame toggle
+                Button {
+                    viewModel.showBlame.toggle()
+                    if viewModel.showBlame && viewModel.blameLines.isEmpty {
+                        Task { await viewModel.loadBlame() }
+                    }
+                } label: {
+                    Image(systemName: viewModel.showBlame ? "person.fill" : "person")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(viewModel.showBlame ? .blue : .secondary)
+                .help("Toggle blame annotations")
+
                 // Search button
                 Button {
                     onSearchTap?()
@@ -62,8 +100,44 @@ struct DiffToolbar: View {
 
                 // Options menu
                 Menu {
-                    Toggle("Show Line Numbers", isOn: $viewModel.showLineNumbers)
-                    Toggle("Wrap Lines", isOn: $viewModel.wrapLines)
+                    Section("Display") {
+                        Toggle("Show Line Numbers", isOn: $viewModel.showLineNumbers)
+                        Toggle("Wrap Lines", isOn: $viewModel.wrapLines)
+                        Toggle("Show Whitespace", isOn: $viewModel.showWhitespace)
+                    }
+
+                    Section("Diff Options") {
+                        Toggle("Ignore Whitespace", isOn: Binding(
+                            get: { viewModel.ignoreWhitespace },
+                            set: { newValue in
+                                viewModel.ignoreWhitespace = newValue
+                                Task { await viewModel.reloadWithOptions() }
+                            }
+                        ))
+                        Toggle("Ignore Blank Lines", isOn: Binding(
+                            get: { viewModel.ignoreBlankLines },
+                            set: { newValue in
+                                viewModel.ignoreBlankLines = newValue
+                                Task { await viewModel.reloadWithOptions() }
+                            }
+                        ))
+                    }
+
+                    Divider()
+
+                    Button(action: {
+                        Task { await viewModel.copyDiffToClipboard() }
+                    }) {
+                        Label("Copy Diff to Clipboard", systemImage: "doc.on.doc")
+                    }
+
+                    Button(action: { viewModel.openInExternalEditor() }) {
+                        Label("Open in Editor", systemImage: "square.and.pencil")
+                    }
+
+                    Button(action: { viewModel.revealInFinder() }) {
+                        Label("Reveal in Finder", systemImage: "folder")
+                    }
                 } label: {
                     Image(systemName: "gearshape")
                 }

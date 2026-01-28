@@ -128,8 +128,8 @@ actor GitService {
     // MARK: - Diff Operations
 
     /// Gets the diff for staged changes.
-    func getStagedDiff(in repository: Repository, filePath: String? = nil) async throws -> [FileDiff] {
-        let command = StagedDiffCommand(filePath: filePath)
+    func getStagedDiff(in repository: Repository, filePath: String? = nil, options: DiffOptions = DiffOptions()) async throws -> [FileDiff] {
+        let command = StagedDiffCommand(filePath: filePath, options: options)
         let output = try await executor.executeOrThrow(
             arguments: command.arguments,
             workingDirectory: repository.rootURL
@@ -138,8 +138,8 @@ actor GitService {
     }
 
     /// Gets the diff for unstaged changes.
-    func getUnstagedDiff(in repository: Repository, filePath: String? = nil) async throws -> [FileDiff] {
-        let command = UnstagedDiffCommand(filePath: filePath)
+    func getUnstagedDiff(in repository: Repository, filePath: String? = nil, options: DiffOptions = DiffOptions()) async throws -> [FileDiff] {
+        let command = UnstagedDiffCommand(filePath: filePath, options: options)
         let output = try await executor.executeOrThrow(
             arguments: command.arguments,
             workingDirectory: repository.rootURL
@@ -148,13 +148,72 @@ actor GitService {
     }
 
     /// Gets the diff for a specific commit.
-    func getCommitDiff(commitHash: String, in repository: Repository) async throws -> [FileDiff] {
-        let command = ShowCommitDiffCommand(commitHash: commitHash)
+    func getCommitDiff(commitHash: String, in repository: Repository, options: DiffOptions = DiffOptions()) async throws -> [FileDiff] {
+        let command = ShowCommitDiffCommand(commitHash: commitHash, options: options)
         let output = try await executor.executeOrThrow(
             arguments: command.arguments,
             workingDirectory: repository.rootURL
         )
         return try command.parse(output: output)
+    }
+
+    // MARK: - Blame Operations
+
+    /// Gets blame information for a file.
+    /// - Parameters:
+    ///   - filePath: The path to the file.
+    ///   - startLine: Optional start line for range.
+    ///   - endLine: Optional end line for range.
+    ///   - repository: The repository.
+    /// - Returns: Array of blame lines.
+    func getBlame(for filePath: String, startLine: Int? = nil, endLine: Int? = nil, in repository: Repository) async throws -> [BlameLine] {
+        let command = BlameCommand(filePath: filePath, startLine: startLine, endLine: endLine)
+        let output = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
+        return try command.parse(output: output)
+    }
+
+    // MARK: - Patch Operations
+
+    /// Generates a patch for staged changes.
+    func getStagedPatch(in repository: Repository, filePath: String? = nil) async throws -> String {
+        let command = GenerateStagedPatchCommand(filePath: filePath)
+        let output = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
+        return try command.parse(output: output)
+    }
+
+    /// Generates a patch for unstaged changes.
+    func getUnstagedPatch(in repository: Repository, filePath: String? = nil) async throws -> String {
+        let command = GenerateUnstagedPatchCommand(filePath: filePath)
+        let output = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
+        return try command.parse(output: output)
+    }
+
+    /// Generates a patch for a commit.
+    func getCommitPatch(commitHash: String, in repository: Repository) async throws -> String {
+        let command = GenerateCommitPatchCommand(commitHash: commitHash)
+        let output = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
+        return try command.parse(output: output)
+    }
+
+    /// Reverts changes in specified files.
+    func revertFiles(_ files: [String], in repository: Repository) async throws {
+        let command = RevertFilesCommand(files: files)
+        _ = try await executor.executeOrThrow(
+            arguments: command.arguments,
+            workingDirectory: repository.rootURL
+        )
     }
 
     // MARK: - Commit Operations
