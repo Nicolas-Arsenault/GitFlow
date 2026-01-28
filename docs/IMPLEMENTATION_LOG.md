@@ -62,11 +62,11 @@
 - [x] PR-style diffs
 - [x] Read-only issue listing
 
-### Phase 8: File System Integration
-- [ ] File tree browser
-- [ ] Reveal file in Finder
-- [ ] Open file in external editor
-- [ ] Drag and drop files
+### Phase 8: File System Integration ✅
+- [x] File tree browser
+- [x] Reveal file in Finder
+- [x] Open file in external editor
+- [x] Drag and drop files
 
 ### Phase 9: Productivity & Navigation
 - [ ] Global search (files, commits, branches)
@@ -408,4 +408,43 @@
 - `GitHubBranchRef` - Branch reference in PR
 - `GitHubRemoteInfo` - Parsed owner/repo from remote URL
 - `GitHubError` - API error types
+
+---
+
+### Phase 8: File System Integration (Completed)
+
+**Date**: 2026-01-27
+
+**Files Created**:
+- `GitFlow/Models/FileTree.swift` - File tree models (FileTreeNode, FileGitStatus, FileTreeConfig)
+- `GitFlow/ViewModels/FileTreeViewModel.swift` - File tree management logic
+- `GitFlow/Views/FileTree/FileTreeView.swift` - File tree browser UI
+
+**Features Implemented**:
+- [x] Hierarchical file tree view with lazy loading
+- [x] Expand/collapse directories
+- [x] Show/hide hidden files
+- [x] Show/hide ignored files
+- [x] Show only changed files filter
+- [x] Multiple sort orders (name, type, modified date)
+- [x] File search with live results
+- [x] Git status indicators on files (M, A, D, R, ?)
+- [x] File type icons based on extension
+- [x] Reveal file in Finder
+- [x] Open file in default application
+- [x] Open file in external editor
+- [x] Copy relative/absolute path to clipboard
+- [x] Create new file
+- [x] Create new folder
+- [x] Rename file/folder
+- [x] Delete file/folder with confirmation
+- [x] Context menus for all operations
+- [x] Expand all / Collapse all
+
+**New Models**:
+- `FileTreeNode` - Tree node with lazy-loaded children
+- `FileGitStatus` - Git status enum for files
+- `FileTreeConfig` - Configuration for display options
+- `FileOperationResult` - Result of file operations
+- `FileTreeError` - File operation error types
 
