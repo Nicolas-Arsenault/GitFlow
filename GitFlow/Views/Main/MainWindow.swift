@@ -198,6 +198,7 @@ struct RepositoryView: View {
                         Text(branch)
                             .fontWeight(.medium)
                     }
+                    .padding(.leading, 4)
                     .foregroundStyle(.secondary)
                 }
 

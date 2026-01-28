@@ -51,38 +51,41 @@ struct UnifiedDiffView: View {
     }
 
     var body: some View {
-        ScrollViewReader { scrollProxy in
-            ScrollView(wrapLines ? [.vertical] : [.horizontal, .vertical]) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(diff.hunks.enumerated()), id: \.element.id) { hunkIndex, hunk in
-                        DiffHunkView(
-                            hunk: hunk,
-                            hunkIndex: hunkIndex,
-                            showLineNumbers: showLineNumbers,
-                            wrapLines: wrapLines,
-                            colorScheme: colorScheme,
-                            searchText: searchText,
-                            currentMatchIndex: currentMatchIndex,
-                            matchLocations: matchLocations,
-                            canStage: canStageHunks,
-                            canUnstage: canUnstageHunks,
-                            onStage: { onStageHunk?(hunk) },
-                            onUnstage: { onUnstageHunk?(hunk) },
-                            isLineSelectionMode: isLineSelectionMode,
-                            selectedLineIds: selectedLineIds,
-                            onSelectLines: { newSelection in
-                                selectedLineIds = newSelection
-                            }
-                        )
+        GeometryReader { geometry in
+            ScrollViewReader { scrollProxy in
+                ScrollView(wrapLines ? [.vertical] : [.horizontal, .vertical]) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(diff.hunks.enumerated()), id: \.element.id) { hunkIndex, hunk in
+                            DiffHunkView(
+                                hunk: hunk,
+                                hunkIndex: hunkIndex,
+                                showLineNumbers: showLineNumbers,
+                                wrapLines: wrapLines,
+                                colorScheme: colorScheme,
+                                searchText: searchText,
+                                currentMatchIndex: currentMatchIndex,
+                                matchLocations: matchLocations,
+                                canStage: canStageHunks,
+                                canUnstage: canUnstageHunks,
+                                onStage: { onStageHunk?(hunk) },
+                                onUnstage: { onUnstageHunk?(hunk) },
+                                isLineSelectionMode: isLineSelectionMode,
+                                selectedLineIds: selectedLineIds,
+                                onSelectLines: { newSelection in
+                                    selectedLineIds = newSelection
+                                }
+                            )
+                            .frame(minWidth: geometry.size.width, alignment: .leading)
+                        }
                     }
+                    .font(DSTypography.code())
                 }
-                .font(DSTypography.code())
-            }
-            .onChange(of: currentMatchIndex) { newIndex in
-                if newIndex < matchLocations.count {
-                    let match = matchLocations[newIndex]
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scrollProxy.scrollTo(match.lineId, anchor: .center)
+                .onChange(of: currentMatchIndex) { newIndex in
+                    if newIndex < matchLocations.count {
+                        let match = matchLocations[newIndex]
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            scrollProxy.scrollTo(match.lineId, anchor: .center)
+                        }
                     }
                 }
             }
