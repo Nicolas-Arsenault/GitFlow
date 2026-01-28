@@ -55,12 +55,12 @@
 - [x] View submodule diffs
 - [x] Stage submodule changes
 
-### Phase 7: GitHub Integration (New Feature)
-- [ ] GitHub authentication
-- [ ] Open repository in browser
-- [ ] Open PRs in browser
-- [ ] PR-style diffs
-- [ ] Read-only issue listing
+### Phase 7: GitHub Integration (New Feature) ✅
+- [x] GitHub authentication
+- [x] Open repository in browser
+- [x] Open PRs in browser
+- [x] PR-style diffs
+- [x] Read-only issue listing
 
 ### Phase 8: File System Integration
 - [ ] File tree browser
@@ -365,4 +365,47 @@
 - `RebaseEntry` - Commit entry in interactive rebase sequence
 - `InteractiveRebaseState` - State of interactive rebase operation
 - `InteractiveRebaseConfig` - Full rebase configuration
+
+---
+
+### Phase 7: GitHub Integration (Completed)
+
+**Date**: 2026-01-27
+
+**Files Created**:
+- `GitFlow/Models/GitHub.swift` - GitHub API models (Repository, User, Issue, PR, Review, etc.)
+- `GitFlow/Services/GitHub/GitHubService.swift` - GitHub API service
+- `GitFlow/ViewModels/GitHubViewModel.swift` - GitHub integration logic
+- `GitFlow/Views/GitHub/GitHubView.swift` - GitHub UI (issues list, PR list, token management)
+
+**Features Implemented**:
+- [x] GitHub repository detection from remotes
+- [x] Personal access token authentication
+- [x] Token validation
+- [x] List open/closed/all issues
+- [x] List open/closed/all pull requests
+- [x] View PR details (reviews, comments, checks)
+- [x] Open repository in browser
+- [x] Open issues in browser
+- [x] Open pull requests in browser
+- [x] Open Actions page in browser
+- [x] Create PR link generation
+- [x] Compare branch link generation
+- [x] Label display with colors
+- [x] Assignee avatars
+- [x] PR status indicators (open, merged, closed, draft)
+- [x] PR diff stats (+/- lines)
+
+**New Models**:
+- `GitHubRepository` - Repository information
+- `GitHubUser` - User/organization information
+- `GitHubIssue` - Issue with labels and assignees
+- `GitHubPullRequest` - Pull request with head/base refs
+- `GitHubLabel` - Label with color
+- `GitHubReview` - PR review with state
+- `GitHubComment` - PR/issue comment
+- `GitHubCheckRun` - CI check run status
+- `GitHubBranchRef` - Branch reference in PR
+- `GitHubRemoteInfo` - Parsed owner/repo from remote URL
+- `GitHubError` - API error types
 
