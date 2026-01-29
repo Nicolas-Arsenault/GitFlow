@@ -837,7 +837,7 @@ class GiteaViewModel: ObservableObject {
         if let current = accountStore.currentAccount {
             currentAccount = current
             Task {
-                try? await service.authenticate(serverURL: current.serverURL, token: current.token)
+                _ = try? await service.authenticate(serverURL: current.serverURL, token: current.token)
                 await MainActor.run {
                     isAuthenticated = true
                 }
@@ -874,7 +874,7 @@ class GiteaViewModel: ObservableObject {
         currentAccount = account
 
         Task {
-            try? await service.authenticate(serverURL: account.serverURL, token: account.token)
+            _ = try? await service.authenticate(serverURL: account.serverURL, token: account.token)
 
             // Reload data for new account
             await loadRepositories()

@@ -189,8 +189,9 @@ struct CommitHistoryView: View {
             if showGraph {
                 Task {
                     let commits = newCommits
+                    let builder = graphBuilder
                     let nodes = await Task.detached(priority: .userInitiated) {
-                        graphBuilder.buildGraph(from: commits)
+                        builder.buildGraph(from: commits)
                     }.value
                     graphNodes = nodes
                 }
@@ -200,8 +201,9 @@ struct CommitHistoryView: View {
             if showGraph && graphNodes.isEmpty {
                 Task {
                     let commits = viewModel.commits
+                    let builder = graphBuilder
                     let nodes = await Task.detached(priority: .userInitiated) {
-                        graphBuilder.buildGraph(from: commits)
+                        builder.buildGraph(from: commits)
                     }.value
                     graphNodes = nodes
                 }
@@ -211,8 +213,9 @@ struct CommitHistoryView: View {
             if newValue && graphNodes.isEmpty {
                 Task {
                     let commits = viewModel.commits
+                    let builder = graphBuilder
                     let nodes = await Task.detached(priority: .userInitiated) {
-                        graphBuilder.buildGraph(from: commits)
+                        builder.buildGraph(from: commits)
                     }.value
                     graphNodes = nodes
                 }

@@ -89,20 +89,23 @@ extension KeyboardShortcut {
         if modifiers.contains(.option) { parts.append("⌥") }
         if modifiers.contains(.control) { parts.append("⌃") }
 
-        switch key {
-        case .return: parts.append("↩")
-        case .delete: parts.append("⌫")
-        case .upArrow: parts.append("↑")
-        case .downArrow: parts.append("↓")
-        case .leftArrow: parts.append("←")
-        case .rightArrow: parts.append("→")
-        case .escape: parts.append("⎋")
-        case .space: parts.append("Space")
-        case .tab: parts.append("⇥")
+        // Map special keys to symbols using character comparison
+        let keyChar = key.character
+        let keyString: String
+        switch keyChar {
+        case "\r": keyString = "↩"           // return
+        case "\u{7F}": keyString = "⌫"       // delete
+        case "\u{F700}": keyString = "↑"     // up arrow
+        case "\u{F701}": keyString = "↓"     // down arrow
+        case "\u{F702}": keyString = "←"     // left arrow
+        case "\u{F703}": keyString = "→"     // right arrow
+        case "\u{1B}": keyString = "⎋"       // escape
+        case " ": keyString = "Space"
+        case "\t": keyString = "⇥"           // tab
         default:
-            // For character keys, just use the character
-            parts.append(String(key.character ?? Character(" ")).uppercased())
+            keyString = String(keyChar).uppercased()
         }
+        parts.append(keyString)
 
         return parts.joined()
     }

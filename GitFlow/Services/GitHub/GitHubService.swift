@@ -281,6 +281,17 @@ actor GitHubService {
         let message: String
     }
 
+    /// Deletes a branch from the repository.
+    /// - Parameters:
+    ///   - owner: Repository owner.
+    ///   - repo: Repository name.
+    ///   - branch: Branch name to delete.
+    func deleteBranch(owner: String, repo: String, branch: String) async throws {
+        try await makeDeleteRequest(
+            path: "/repos/\(owner)/\(repo)/git/refs/heads/\(branch)"
+        )
+    }
+
     // MARK: - Comment Operations
 
     /// Adds a comment to a pull request or issue.

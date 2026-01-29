@@ -571,7 +571,7 @@ class BeanstalkViewModel: ObservableObject {
         if let current = accountStore.currentAccount {
             currentAccount = current
             Task {
-                try? await service.authenticate(domain: current.domain, username: current.username, token: current.token)
+                _ = try? await service.authenticate(domain: current.domain, username: current.username, token: current.token)
                 await MainActor.run {
                     isAuthenticated = true
                 }
@@ -608,7 +608,7 @@ class BeanstalkViewModel: ObservableObject {
         currentAccount = account
 
         Task {
-            try? await service.authenticate(domain: account.domain, username: account.username, token: account.token)
+            _ = try? await service.authenticate(domain: account.domain, username: account.username, token: account.token)
             await loadRepositories()
         }
     }

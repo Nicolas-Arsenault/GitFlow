@@ -18,8 +18,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case worktrees = "Worktrees"
 
     // Remotes
-    case remotes = "Remotes"
-    case sync = "Sync"
+    case remotes = "Remote"
 
     // Pull Requests
     case pullRequests = "Pull Requests"
@@ -44,11 +43,10 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .stashes: return "tray.and.arrow.down"
         case .tags: return "tag"
         case .reflog: return "clock.arrow.circlepath"
-        case .sync: return "arrow.triangle.2.circlepath"
         case .fileTree: return "folder"
         case .submodules: return "shippingbox"
         case .worktrees: return "rectangle.stack"
-        case .remotes: return "server.rack"
+        case .remotes: return "arrow.triangle.2.circlepath"
         case .pullRequests: return "arrow.triangle.pull"
         case .github: return "link.circle"
         case .gitlab: return "g.circle"
@@ -64,7 +62,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         switch self {
         case .changes, .stashes, .fileTree,
              .history, .branches, .tags, .reflog, .submodules, .worktrees,
-             .remotes, .sync, .pullRequests,
+             .remotes, .pullRequests,
              .github:
             return true
         case .branchesReview, .archivedBranches,
@@ -124,9 +122,8 @@ struct Sidebar: View {
             }
 
             Section("Remote") {
-                sidebarItem(for: .remotes, badge: remoteCountBadge)
+                sidebarItem(for: .remotes, badge: syncBadge)
                     .dropTarget(.remotesSection, coordinator: dragDropCoordinator)
-                sidebarItem(for: .sync, badge: syncBadge)
                 sidebarItem(for: .pullRequests, badge: prCountBadge)
                     .dropTarget(.pullRequests, coordinator: dragDropCoordinator)
             }

@@ -7,6 +7,9 @@ struct GitHubView: View {
     @State private var selectedTab: Tab = .pullRequests
     @State private var showTokenSheet: Bool = false
 
+    // Local state to avoid "Publishing changes from within view updates" warning
+    @State private var localStateFilter: GitHubViewModel.StateFilter = .open
+
     enum Tab: String, CaseIterable, Identifiable {
         case pullRequests = "Pull Requests"
         case issues = "Issues"
@@ -110,13 +113,22 @@ struct GitHubView: View {
             .padding()
 
             // State filter
-            Picker("State", selection: $viewModel.stateFilter) {
+            Picker("State", selection: $localStateFilter) {
                 ForEach(GitHubViewModel.StateFilter.allCases) { filter in
                     Text(filter.displayName).tag(filter)
                 }
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
+            .onChange(of: localStateFilter) { newValue in
+                // Defer sync to view model to avoid "Publishing changes from within view updates"
+                Task { @MainActor in
+                    viewModel.stateFilter = newValue
+                }
+            }
+            .onAppear {
+                localStateFilter = viewModel.stateFilter
+            }
 
             Divider()
                 .padding(.top, 8)

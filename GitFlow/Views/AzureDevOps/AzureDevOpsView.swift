@@ -785,7 +785,7 @@ class AzureDevOpsViewModel: ObservableObject {
         if let current = accountStore.currentAccount {
             currentAccount = current
             Task {
-                try? await service.authenticate(organization: current.organization, token: current.token)
+                _ = try? await service.authenticate(organization: current.organization, token: current.token)
                 await MainActor.run {
                     isAuthenticated = true
                 }
@@ -821,7 +821,7 @@ class AzureDevOpsViewModel: ObservableObject {
         currentAccount = account
 
         Task {
-            try? await service.authenticate(organization: account.organization, token: account.token)
+            _ = try? await service.authenticate(organization: account.organization, token: account.token)
 
             // Reload data for new account
             await loadRepositories()
