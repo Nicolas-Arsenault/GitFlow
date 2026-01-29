@@ -79,6 +79,7 @@ private struct CommandPaletteSearchBar: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Clear search")
             }
 
             // Hint

@@ -141,6 +141,7 @@ private struct RebaseEntryRow: View {
                         .font(.caption2)
                 }
                 .buttonStyle(.plain)
+                .help("Move up")
                 .disabled(!canMoveUp)
 
                 Button(action: onMoveDown) {
@@ -148,6 +149,7 @@ private struct RebaseEntryRow: View {
                         .font(.caption2)
                 }
                 .buttonStyle(.plain)
+                .help("Move down")
                 .disabled(!canMoveDown)
             }
             .foregroundStyle(.secondary)

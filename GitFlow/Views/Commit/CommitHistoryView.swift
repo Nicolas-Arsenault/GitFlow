@@ -75,6 +75,7 @@ struct CommitHistoryView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .help("Clear search")
                 }
             }
             .padding(8)

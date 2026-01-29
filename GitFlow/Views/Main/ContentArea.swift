@@ -473,6 +473,7 @@ struct UnifiedPullRequestsView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
+                .help("Refresh pull requests")
                 .disabled(viewModel.isLoading)
             }
             .padding()
@@ -1762,6 +1763,7 @@ struct PRDiffToolbar: View {
             }
             .menuStyle(.borderlessButton)
             .frame(width: 24)
+            .help("Diff options")
 
             // Fullscreen toggle
             Button {
@@ -1812,6 +1814,7 @@ struct PRDiffSearchBar: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .help("Clear search")
                 }
             }
             .padding(.horizontal, 8)

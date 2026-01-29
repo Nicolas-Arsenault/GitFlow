@@ -71,6 +71,7 @@ struct BranchReviewView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
+            .help("Refresh branch analysis")
         }
         .padding()
     }

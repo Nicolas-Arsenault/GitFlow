@@ -306,6 +306,7 @@ struct BeanstalkRepositoriesView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
+                .help("Refresh repositories")
             }
             .padding(8)
             .background(Color(nsColor: .controlBackgroundColor))
@@ -452,6 +453,7 @@ struct BeanstalkCodeReviewsView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
+                .help("Refresh code reviews")
             }
             .padding(8)
 

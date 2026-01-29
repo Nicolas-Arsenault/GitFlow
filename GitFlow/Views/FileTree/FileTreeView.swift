@@ -242,6 +242,7 @@ private struct FileTreeHeader: View {
             }
             .menuStyle(.borderlessButton)
             .frame(width: 24)
+            .help("View options")
 
             // New file/folder
             Menu {
@@ -256,12 +257,14 @@ private struct FileTreeHeader: View {
             }
             .menuStyle(.borderlessButton)
             .frame(width: 24)
+            .help("New file or folder")
 
             // Refresh
             Button(action: { Task { await viewModel.refresh() } }) {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
+            .help("Refresh")
 
             if viewModel.isLoading {
                 ProgressView()
@@ -292,6 +295,7 @@ private struct FileTreeSearchBar: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Clear search")
             }
         }
         .padding(.horizontal)

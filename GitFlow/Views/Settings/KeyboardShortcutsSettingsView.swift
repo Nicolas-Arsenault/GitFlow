@@ -98,6 +98,7 @@ struct ShortcutRow: View {
                 Image(systemName: "pencil")
             }
             .buttonStyle(.borderless)
+            .help("Edit shortcut")
         }
         .padding(.vertical, 4)
     }

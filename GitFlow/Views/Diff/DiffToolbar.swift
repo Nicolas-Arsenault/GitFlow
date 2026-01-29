@@ -195,6 +195,7 @@ struct DiffToolbar: View {
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
+                .help("Diff options")
 
                 // Fullscreen toggle
                 Button {

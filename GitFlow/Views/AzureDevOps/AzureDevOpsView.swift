@@ -289,6 +289,7 @@ struct AzureDevOpsRepositoriesView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
+                .help("Refresh repositories")
             }
             .padding(8)
             .background(Color(nsColor: .controlBackgroundColor))
@@ -428,6 +429,7 @@ struct AzureDevOpsPullRequestsView: View {
                         Image(systemName: "arrow.clockwise")
                     }
                     .buttonStyle(.borderless)
+                    .help("Refresh pull requests")
                 }
                 .padding(8)
 

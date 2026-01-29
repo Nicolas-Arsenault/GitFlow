@@ -362,6 +362,7 @@ struct RemoteRow: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .buttonStyle(.borderless)
+                .help("Remote options")
             }
 
             Text(remote.fetchURL)
@@ -405,6 +406,7 @@ struct AddRemoteSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
+                .help("Close")
             }
             .padding()
 
@@ -483,6 +485,7 @@ struct EditRemoteURLSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
+                .help("Close")
             }
             .padding()
 
@@ -566,6 +569,7 @@ struct RenameRemoteSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
+                .help("Close")
             }
             .padding()
 

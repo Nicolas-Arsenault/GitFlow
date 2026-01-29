@@ -193,14 +193,14 @@ struct RepositoryView: View {
                 Button(action: goBack) {
                     Image(systemName: "chevron.left")
                 }
-                .help("Back")
+                .tooltip("Back")
                 .disabled(!navigationHistory.canGoBack)
                 .keyboardShortcut("[", modifiers: .command)
 
                 Button(action: goForward) {
                     Image(systemName: "chevron.right")
                 }
-                .help("Forward")
+                .tooltip("Forward")
                 .disabled(!navigationHistory.canGoForward)
                 .keyboardShortcut("]", modifiers: .command)
 
@@ -211,7 +211,7 @@ struct RepositoryView: View {
                 }) {
                     Image(systemName: "folder")
                 }
-                .help("Change Repository")
+                .tooltip("Change Repository")
             }
 
             // Branch and sync operations
@@ -238,7 +238,7 @@ struct RepositoryView: View {
                             .font(.caption2)
                     }
                 }
-                .help("Current branch - click to switch")
+                .tooltip("Current branch - click to switch")
 
                 Divider()
 
@@ -248,7 +248,7 @@ struct RepositoryView: View {
                 }) {
                     Image(systemName: "arrow.down.circle")
                 }
-                .help("Fetch from all remotes")
+                .tooltip("Fetch from all remotes")
                 .disabled(viewModel.isLoading)
 
                 // Pull button
@@ -263,7 +263,7 @@ struct RepositoryView: View {
                         }
                     }
                 }
-                .help("Pull changes from remote")
+                .tooltip("Pull changes from remote")
                 .disabled(viewModel.isLoading)
 
                 // Push button
@@ -278,7 +278,7 @@ struct RepositoryView: View {
                         }
                     }
                 }
-                .help("Push changes to remote")
+                .tooltip("Push changes to remote")
                 .disabled(viewModel.isLoading)
 
                 // Sync button (Pull + Push)
@@ -291,7 +291,7 @@ struct RepositoryView: View {
                 }) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                 }
-                .help("Sync: Fetch, Pull, then Push")
+                .tooltip("Sync (Fetch, Pull, Push)")
                 .disabled(viewModel.isLoading)
 
                 Divider()
@@ -302,7 +302,7 @@ struct RepositoryView: View {
                 }) {
                     Image(systemName: "tray.and.arrow.down")
                 }
-                .help("Stash changes")
+                .tooltip("Stash changes")
                 .disabled(viewModel.statusViewModel.status.totalChangedFiles == 0)
 
                 Divider()
@@ -312,7 +312,7 @@ struct RepositoryView: View {
                 }) {
                     Image(systemName: "arrow.clockwise")
                 }
-                .help("Refresh")
+                .tooltip("Refresh")
                 .disabled(viewModel.isLoading)
 
                 Button(action: {
@@ -320,7 +320,7 @@ struct RepositoryView: View {
                 }) {
                     Image(systemName: "gearshape")
                 }
-                .help("Settings")
+                .tooltip("Settings")
             }
         }
         .overlay {

@@ -113,6 +113,7 @@ private struct TabButton: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .help("Close tab")
             .opacity(isHovering ? 1 : 0)
         }
         .padding(.horizontal, 12)

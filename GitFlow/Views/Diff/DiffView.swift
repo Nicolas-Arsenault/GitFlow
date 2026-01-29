@@ -185,6 +185,7 @@ struct DiffSearchBar: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .help("Clear search")
                 }
             }
             .padding(.horizontal, DSSpacing.sm)

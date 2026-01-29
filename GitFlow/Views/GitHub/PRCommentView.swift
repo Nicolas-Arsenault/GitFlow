@@ -31,6 +31,7 @@ struct PRCommentView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
+                .help("Refresh comments")
                 .disabled(isLoading)
             }
             .padding()

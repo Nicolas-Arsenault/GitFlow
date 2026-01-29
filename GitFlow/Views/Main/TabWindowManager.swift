@@ -201,6 +201,7 @@ struct TabBarView: View {
                     .font(.caption)
             }
             .buttonStyle(.borderless)
+            .help("New tab")
             .padding(.horizontal, 8)
         }
         .frame(height: 28)
@@ -251,6 +252,7 @@ struct TabItemView: View {
                     .font(.system(size: 9, weight: .medium))
             }
             .buttonStyle(.borderless)
+            .help("Close tab")
             .opacity(isHovering || isActive ? 1 : 0)
         }
         .padding(.horizontal, 12)

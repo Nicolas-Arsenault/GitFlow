@@ -275,6 +275,7 @@ private struct AuthorOverrideSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Close")
             }
             .padding()
 
@@ -363,6 +364,7 @@ private struct TemplatePlaceholderSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Close")
             }
             .padding()
 

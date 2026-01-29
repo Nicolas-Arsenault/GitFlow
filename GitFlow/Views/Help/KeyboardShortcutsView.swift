@@ -30,6 +30,7 @@ struct KeyboardShortcutsView: View {
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(.borderless)
+                        .help("Clear search")
                     }
                 }
                 .padding(8)
