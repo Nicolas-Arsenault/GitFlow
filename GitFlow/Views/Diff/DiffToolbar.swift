@@ -4,20 +4,18 @@ import SwiftUI
 struct DiffToolbar: View {
     @ObservedObject var viewModel: DiffViewModel
     var onSearchTap: (() -> Void)?
-    @Binding var isFullscreen: Bool
 
     // Local state to avoid "Publishing changes from within view updates" warning
     @State private var localViewMode: DiffViewModel.ViewMode = .unified
 
-    init(viewModel: DiffViewModel, onSearchTap: (() -> Void)? = nil, isFullscreen: Binding<Bool> = .constant(false)) {
+    init(viewModel: DiffViewModel, onSearchTap: (() -> Void)? = nil) {
         self.viewModel = viewModel
         self.onSearchTap = onSearchTap
-        self._isFullscreen = isFullscreen
     }
 
     var body: some View {
-        HStack {
-            // File header
+        HStack(spacing: 8) {
+            // File header (flexible, shrinks to fit)
             if viewModel.hasDiff {
                 DiffFileHeader(viewModel: viewModel)
             } else {
@@ -25,70 +23,78 @@ struct DiffToolbar: View {
                     .font(.headline)
             }
 
-            Spacer()
+            Spacer(minLength: 4)
 
-            // Controls
+            // Controls - grouped together, won't shrink
             if viewModel.hasDiff {
-                // Hunk navigation
-                if viewModel.totalHunks > 1 {
-                    HStack(spacing: 2) {
-                        Button(action: { viewModel.navigateToPreviousHunk() }) {
-                            Image(systemName: "chevron.up")
-                        }
-                        .buttonStyle(.borderless)
-                        .help("Previous change")
-
-                        Text("\(viewModel.focusedHunkIndex + 1)/\(viewModel.totalHunks)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(minWidth: 30)
-
-                        Button(action: { viewModel.navigateToNextHunk() }) {
-                            Image(systemName: "chevron.down")
-                        }
-                        .buttonStyle(.borderless)
-                        .help("Next change")
-                    }
-
-                    Divider()
-                        .frame(height: 16)
-                }
-
-                // Stats
                 HStack(spacing: 8) {
-                    if let diff = viewModel.currentDiff {
+                // Stats (compact)
+                if let diff = viewModel.currentDiff {
+                    HStack(spacing: 4) {
                         Text("+\(diff.additions)")
                             .foregroundStyle(DSColors.addition)
                         Text("-\(diff.deletions)")
                             .foregroundStyle(DSColors.deletion)
                     }
+                    .font(.caption)
+                    .fontDesign(.monospaced)
+                    .fixedSize()
                 }
-                .font(.caption)
-                .fontDesign(.monospaced)
+
+                // Hunk navigation (compact)
+                if viewModel.totalHunks > 1 {
+                    HStack(spacing: 0) {
+                        Button(action: { viewModel.navigateToPreviousHunk() }) {
+                            Image(systemName: "chevron.up")
+                        }
+                        .buttonStyle(.borderless)
+
+                        Text("\(viewModel.focusedHunkIndex + 1)/\(viewModel.totalHunks)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 24)
+
+                        Button(action: { viewModel.navigateToNextHunk() }) {
+                            Image(systemName: "chevron.down")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .fixedSize()
+                }
 
                 Divider()
                     .frame(height: 16)
 
-                // View mode picker
-                Picker("View Mode", selection: $localViewMode) {
-                    ForEach(DiffViewModel.ViewMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
+                // View mode picker (menu style to save space)
+                Menu {
+                    Picker("View Mode", selection: $localViewMode) {
+                        ForEach(DiffViewModel.ViewMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(localViewMode.rawValue)
+                            .font(.caption)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2)
                     }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 120)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
                 .onChange(of: localViewMode) { newValue in
-                    // Defer sync to view model to avoid "Publishing changes from within view updates"
                     Task { @MainActor in
                         viewModel.viewMode = newValue
                     }
                 }
 
+                Divider()
+                    .frame(height: 16)
+
                 // Line staging actions (shown when lines are selected)
                 if viewModel.canStageHunks || viewModel.canUnstageHunks {
                     if !viewModel.selectedLineIds.isEmpty {
-                        Text("\(viewModel.selectedLineIds.count) lines")
+                        Text("\(viewModel.selectedLineIds.count)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
@@ -96,22 +102,22 @@ struct DiffToolbar: View {
                             Button {
                                 Task { await viewModel.stageSelectedLines() }
                             } label: {
-                                Label("Stage Lines", systemImage: "plus.circle.fill")
+                                Image(systemName: "plus.circle.fill")
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .tint(.green)
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.green)
+                            .help("Stage selected lines")
                         }
 
                         if viewModel.canUnstageSelectedLines {
                             Button {
                                 Task { await viewModel.unstageSelectedLines() }
                             } label: {
-                                Label("Unstage Lines", systemImage: "minus.circle.fill")
+                                Image(systemName: "minus.circle.fill")
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .tint(.orange)
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.orange)
+                            .help("Unstage selected lines")
                         }
 
                         Button {
@@ -121,25 +127,11 @@ struct DiffToolbar: View {
                         }
                         .buttonStyle(.borderless)
                         .help("Clear selection")
-                    }
 
-                    Divider()
-                        .frame(height: 16)
-                }
-
-                // Blame toggle
-                Button {
-                    viewModel.showBlame.toggle()
-                    if viewModel.showBlame && viewModel.blameLines.isEmpty {
-                        Task { await viewModel.loadBlame() }
+                        Divider()
+                            .frame(height: 16)
                     }
-                } label: {
-                    Label("Blame", systemImage: viewModel.showBlame ? "person.fill" : "person")
-                        .labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(viewModel.showBlame ? .blue : .secondary)
-                .help("Show who last modified each line")
 
                 // Search button
                 Button {
@@ -150,15 +142,38 @@ struct DiffToolbar: View {
                 .buttonStyle(.borderless)
                 .help("Search in diff (⌘F)")
 
-                // Options menu
+                // Options menu (includes blame toggle)
                 Menu {
+                    // Blame toggle at top
+                    Toggle(isOn: Binding(
+                        get: { viewModel.showBlame },
+                        set: { newValue in
+                            viewModel.showBlame = newValue
+                            if newValue && viewModel.blameLines.isEmpty {
+                                Task { await viewModel.loadBlame() }
+                            }
+                        }
+                    )) {
+                        Label("Show Blame", systemImage: "person")
+                    }
+
+                    Divider()
+
                     Section("Display") {
                         Toggle("Show Line Numbers", isOn: $viewModel.showLineNumbers)
                         Toggle("Wrap Lines", isOn: $viewModel.wrapLines)
                         Toggle("Show Whitespace", isOn: $viewModel.showWhitespace)
                     }
 
-                    Section("Diff Options") {
+                    Section("Noise Suppression") {
+                        Toggle("Hide Generated Files", isOn: $viewModel.noiseOptions.hideGeneratedFiles)
+                        Toggle("Hide Lockfiles", isOn: $viewModel.noiseOptions.hideLockfiles)
+                        Toggle("Collapse Renames", isOn: $viewModel.noiseOptions.collapseRenames)
+                        Toggle("Hide Comment Changes", isOn: $viewModel.noiseOptions.hideCommentChanges)
+                        Toggle("Hide Import Changes", isOn: $viewModel.noiseOptions.hideImportChanges)
+                    }
+
+                    Section("Whitespace") {
                         Toggle("Ignore Whitespace", isOn: Binding(
                             get: { viewModel.ignoreWhitespace },
                             set: { newValue in
@@ -173,6 +188,14 @@ struct DiffToolbar: View {
                                 Task { await viewModel.reloadWithOptions() }
                             }
                         ))
+                    }
+
+                    Section("Sort Order") {
+                        Picker("Sort By", selection: $viewModel.noiseOptions.sortOrder) {
+                            ForEach(NoiseSuppressionOptions.SortOrder.allCases) { order in
+                                Text(order.rawValue).tag(order)
+                            }
+                        }
                     }
 
                     Divider()
@@ -191,22 +214,13 @@ struct DiffToolbar: View {
                         Label("Reveal in Finder", systemImage: "folder")
                     }
                 } label: {
-                    Image(systemName: "gearshape")
+                    Image(systemName: viewModel.showBlame ? "gearshape.fill" : "gearshape")
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
                 .help("Diff options")
-
-                // Fullscreen toggle
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isFullscreen.toggle()
-                    }
-                } label: {
-                    Image(systemName: isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                 }
-                .buttonStyle(.borderless)
-                .help(isFullscreen ? "Exit fullscreen" : "Fullscreen diff")
+                .fixedSize()
             }
         }
         .padding(.horizontal)

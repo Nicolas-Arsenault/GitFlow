@@ -9,13 +9,36 @@ struct DiffFileHeader: View {
             if let diff = viewModel.currentDiff {
                 // Change type icon
                 ChangeTypeIcon(changeType: diff.changeType)
+                    .fixedSize()
 
-                // File name
+                // File name (truncates to fit available space)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(diff.fileName)
-                        .font(.headline)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(diff.fileName)
+                            .font(.headline)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
 
+                        // Similarity badge for renames
+                        if diff.changeType == .renamed || diff.changeType == .copied {
+                            SimilarityBadge(diff: diff)
+                                .fixedSize()
+                        }
+
+                        // Generated file badge
+                        if diff.isGeneratedFile {
+                            Text("Generated")
+                                .font(.caption2)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.secondary.opacity(0.2))
+                                .foregroundStyle(.secondary)
+                                .clipShape(RoundedRectangle(cornerRadius: 3))
+                                .fixedSize()
+                        }
+                    }
+
+                    // Directory path
                     if !diff.directory.isEmpty {
                         Text(diff.directory)
                             .font(.caption)
@@ -24,19 +47,56 @@ struct DiffFileHeader: View {
                             .truncationMode(.middle)
                     }
                 }
-
-                // Renamed indicator
-                if let oldPath = diff.oldPath {
-                    Image(systemName: "arrow.left")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(oldPath)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                .frame(maxWidth: 250, alignment: .leading)
             }
         }
+    }
+}
+
+/// Badge showing similarity percentage for renamed/copied files.
+struct SimilarityBadge: View {
+    let diff: FileDiff
+
+    var body: some View {
+        if let similarity = diff.similarityPercentage {
+            HStack(spacing: 2) {
+                if diff.isPureRename || diff.isPureCopy {
+                    Image(systemName: "equal")
+                        .font(.system(size: 8, weight: .bold))
+                }
+                Text("\(similarity)%")
+            }
+            .font(.caption2)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(badgeColor.opacity(0.15))
+            .foregroundStyle(badgeColor)
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .help(helpText)
+        }
+    }
+
+    private var badgeColor: Color {
+        guard let similarity = diff.similarityPercentage else { return .secondary }
+        if similarity == 100 {
+            return .green
+        } else if similarity >= 90 {
+            return .blue
+        } else if similarity >= 70 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+
+    private var helpText: String {
+        let type = diff.changeType == .copied ? "Copy" : "Rename"
+        if diff.isPureRename || diff.isPureCopy {
+            return "Pure \(type.lowercased()) - no content changes"
+        } else if let similarity = diff.similarityPercentage {
+            return "\(type) with \(100 - similarity)% content changes"
+        }
+        return type
     }
 }
 
@@ -49,19 +109,57 @@ struct CompactDiffFileHeader: View {
         HStack(spacing: 6) {
             ChangeTypeIcon(changeType: diff.changeType)
 
-            Text(diff.fileName)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text(diff.fileName)
+                        .lineLimit(1)
+
+                    // Similarity badge for renames/copies
+                    if (diff.changeType == .renamed || diff.changeType == .copied),
+                       let similarity = diff.similarityPercentage {
+                        Text("\(similarity)%")
+                            .font(.caption2)
+                            .foregroundStyle(similarity == 100 ? .green : .orange)
+                    }
+
+                    // Generated indicator
+                    if diff.isGeneratedFile {
+                        Image(systemName: "gearshape")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                // Show old path for renames
+                if let oldPath = diff.oldPath {
+                    Text("← \((oldPath as NSString).lastPathComponent)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
 
             Spacer()
 
-            HStack(spacing: 4) {
-                Text("+\(diff.additions)")
-                    .foregroundStyle(.green)
-                Text("-\(diff.deletions)")
-                    .foregroundStyle(.red)
+            // Stats
+            if diff.additions > 0 || diff.deletions > 0 {
+                HStack(spacing: 4) {
+                    if diff.additions > 0 {
+                        Text("+\(diff.additions)")
+                            .foregroundStyle(.green)
+                    }
+                    if diff.deletions > 0 {
+                        Text("-\(diff.deletions)")
+                            .foregroundStyle(.red)
+                    }
+                }
+                .font(.caption2)
+                .fontDesign(.monospaced)
+            } else if diff.isPureRename || diff.isPureCopy {
+                Text("no changes")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            .font(.caption2)
-            .fontDesign(.monospaced)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

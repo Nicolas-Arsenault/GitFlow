@@ -3,22 +3,20 @@ import SwiftUI
 /// Main diff view container.
 struct DiffView: View {
     @ObservedObject var viewModel: DiffViewModel
-    @Binding var isFullscreen: Bool
 
     @State private var showSearch: Bool = false
     @State private var searchText: String = ""
     @State private var currentMatchIndex: Int = 0
     @State private var totalMatches: Int = 0
 
-    init(viewModel: DiffViewModel, isFullscreen: Binding<Bool> = .constant(false)) {
+    init(viewModel: DiffViewModel) {
         self.viewModel = viewModel
-        self._isFullscreen = isFullscreen
     }
 
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
-            DiffToolbar(viewModel: viewModel, onSearchTap: { showSearch.toggle() }, isFullscreen: $isFullscreen)
+            DiffToolbar(viewModel: viewModel, onSearchTap: { showSearch.toggle() })
 
             // Search bar
             if showSearch {
@@ -52,8 +50,8 @@ struct DiffView: View {
                     )
                 } else {
                     Group {
-                        // Use virtualized view for large files
-                        if viewModel.needsVirtualizedRendering {
+                        // Use virtualized view for large files (not in structure mode)
+                        if viewModel.needsVirtualizedRendering && viewModel.viewMode != .structure {
                             VStack(spacing: 0) {
                                 // Large file warning
                                 HStack {
@@ -107,10 +105,17 @@ struct DiffView: View {
                                     showLineNumbers: viewModel.showLineNumbers,
                                     searchText: searchText
                                 )
+                            case .structure:
+                                structuralDiffContent(diff: diff)
                             }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onChange(of: viewModel.viewMode) { newMode in
+                        if newMode == .structure {
+                            Task { await viewModel.performStructuralAnalysis() }
+                        }
+                    }
                 }
             } else {
                 EmptyStateView(
@@ -150,6 +155,83 @@ struct DiffView: View {
 
     private func totalLineCount(_ diff: FileDiff) -> Int {
         diff.hunks.reduce(0) { $0 + $1.lines.count }
+    }
+
+    // MARK: - Structural Diff View
+
+    @ViewBuilder
+    private func structuralDiffContent(diff: FileDiff) -> some View {
+        if viewModel.isStructuralAnalysisLoading {
+            VStack(spacing: 16) {
+                ProgressView()
+                    .controlSize(.large)
+                Text("Analyzing code structure...")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if !diff.path.hasSuffix(".swift") {
+            VStack(spacing: 16) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.secondary)
+                Text("Structural Analysis")
+                    .font(.headline)
+                Text("Structural analysis is currently only available for Swift files.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Semantic Equivalence Analysis
+                    if !viewModel.semanticEquivalences.isEmpty {
+                        SemanticEquivalenceView(equivalences: viewModel.semanticEquivalences)
+                            .padding(.horizontal)
+                    }
+
+                    // Change Impact Analysis
+                    if let impact = viewModel.changeImpact {
+                        ChangeImpactView(impact: impact)
+                            .padding(.horizontal)
+                    }
+
+                    // Structural Changes
+                    StructuralDiffView(
+                        changes: viewModel.structuralChanges,
+                        oldEntities: viewModel.oldEntities,
+                        newEntities: viewModel.newEntities,
+                        onSelectChange: { change in
+                            // Navigate to the hunk containing this change
+                            navigateToStructuralChange(change, in: diff)
+                        }
+                    )
+                    .padding(.horizontal)
+                }
+                .padding(.vertical)
+            }
+        }
+    }
+
+    private func navigateToStructuralChange(_ change: StructuralChange, in diff: FileDiff) {
+        // Find the hunk that contains the line range of this change
+        let targetLine = change.entity.lineRange.lowerBound + 1
+        for (index, hunk) in diff.hunks.enumerated() {
+            // Check if this hunk contains the target line
+            if let firstLine = hunk.lines.first(where: { $0.newLineNumber != nil }),
+               let lastLine = hunk.lines.last(where: { $0.newLineNumber != nil }),
+               let first = firstLine.newLineNumber,
+               let last = lastLine.newLineNumber {
+                if targetLine >= first && targetLine <= last {
+                    viewModel.focusedHunkIndex = index
+                    // Switch to unified view to show the actual diff
+                    viewModel.viewMode = .unified
+                    break
+                }
+            }
+        }
     }
 }
 

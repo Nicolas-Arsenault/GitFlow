@@ -191,6 +191,8 @@
 		VIEW075 /* StructuralDiffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE075 /* StructuralDiffView.swift */; };
 		VIEW076 /* SemanticEquivalenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE076 /* SemanticEquivalenceView.swift */; };
 		VIEW077 /* ChangeImpactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE077 /* ChangeImpactView.swift */; };
+		VIEW078 /* StackNavigationHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE078 /* StackNavigationHeader.swift */; };
+		VIEW079 /* CommitDiffContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VIEWFILE079 /* CommitDiffContentView.swift */; };
 
 		/* Utilities */
 		UTIL001 /* String+Git.swift in Sources */ = {isa = PBXBuildFile; fileRef = UTILFILE001 /* String+Git.swift */; };
@@ -423,6 +425,8 @@
 		VIEWFILE075 /* StructuralDiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuralDiffView.swift; sourceTree = "<group>"; };
 		VIEWFILE076 /* SemanticEquivalenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticEquivalenceView.swift; sourceTree = "<group>"; };
 		VIEWFILE077 /* ChangeImpactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeImpactView.swift; sourceTree = "<group>"; };
+		VIEWFILE078 /* StackNavigationHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackNavigationHeader.swift; sourceTree = "<group>"; };
+		VIEWFILE079 /* CommitDiffContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommitDiffContentView.swift; sourceTree = "<group>"; };
 
 		/* Utilities */
 		UTILFILE001 /* String+Git.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Git.swift"; sourceTree = "<group>"; };
@@ -686,6 +690,7 @@
 			children = (
 				VIEWFILE018 /* CommitCreationView.swift */,
 				VIEWFILE017 /* CommitDetailView.swift */,
+				VIEWFILE079 /* CommitDiffContentView.swift */,
 				VIEWFILE015 /* CommitHistoryView.swift */,
 				VIEWFILE016 /* CommitRow.swift */,
 				VIEWFILE056 /* GitmojiPickerView.swift */,
@@ -760,6 +765,7 @@
 				VIEWFILE022 /* LoadingView.swift */,
 				VIEWFILE023 /* ErrorView.swift */,
 				VIEWFILE024 /* ConfirmationDialog.swift */,
+				VIEWFILE078 /* StackNavigationHeader.swift */,
 				VIEWFILE030 /* AvatarView.swift */,
 				VIEWFILE044 /* SpellCheckTextEditor.swift */,
 			);
@@ -1458,6 +1464,8 @@
 				VIEW075 /* StructuralDiffView.swift in Sources */,
 				VIEW076 /* SemanticEquivalenceView.swift in Sources */,
 				VIEW077 /* ChangeImpactView.swift in Sources */,
+				VIEW078 /* StackNavigationHeader.swift in Sources */,
+				VIEW079 /* CommitDiffContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

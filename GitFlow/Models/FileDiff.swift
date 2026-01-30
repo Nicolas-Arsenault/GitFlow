@@ -32,6 +32,10 @@ struct FileDiff: Identifiable, Equatable {
     /// The new blob hash.
     let newHash: String?
 
+    /// Similarity percentage for renamed/copied files (0-100).
+    /// Git reports this when using -M (rename detection) or -C (copy detection).
+    let similarityPercentage: Int?
+
     /// Cached addition count for performance.
     private let _additions: Int
 
@@ -55,9 +59,90 @@ struct FileDiff: Identifiable, Equatable {
         return dir.isEmpty ? "" : dir
     }
 
+    /// The original file name for renamed files.
+    var originalFileName: String? {
+        oldPath.map { ($0 as NSString).lastPathComponent }
+    }
+
     /// Whether this file has any changes to display.
     var hasChanges: Bool {
         !hunks.isEmpty || isBinary
+    }
+
+    /// Whether this is a pure rename (100% similar, no content changes).
+    var isPureRename: Bool {
+        changeType == .renamed && similarityPercentage == 100
+    }
+
+    /// Whether this is a rename with content modifications.
+    var isRenameWithChanges: Bool {
+        changeType == .renamed && (similarityPercentage ?? 100) < 100
+    }
+
+    /// Whether this is a pure copy (100% similar).
+    var isPureCopy: Bool {
+        changeType == .copied && similarityPercentage == 100
+    }
+
+    /// Whether this file is likely a generated file (lockfiles, build artifacts, etc.).
+    var isGeneratedFile: Bool {
+        let name = fileName.lowercased()
+        let generatedPatterns = [
+            "package-lock.json",
+            "yarn.lock",
+            "pnpm-lock.yaml",
+            "podfile.lock",
+            "packages.resolved",
+            "composer.lock",
+            "gemfile.lock",
+            "cargo.lock",
+            "poetry.lock"
+        ]
+
+        // Exact matches for lockfiles
+        if generatedPatterns.contains(name) {
+            return true
+        }
+
+        // Pattern matches for generated code
+        let generatedSuffixes = [
+            ".generated.swift",
+            ".pb.swift",
+            ".pb.go",
+            ".g.dart",
+            ".freezed.dart",
+            ".gen.go",
+            ".generated.ts"
+        ]
+
+        for suffix in generatedSuffixes {
+            if path.lowercased().hasSuffix(suffix) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /// Whether this file is a lockfile.
+    var isLockfile: Bool {
+        let name = fileName.lowercased()
+        return name.hasSuffix(".lock") ||
+               name.hasSuffix("-lock.json") ||
+               name.hasSuffix("-lock.yaml") ||
+               name == "packages.resolved"
+    }
+
+    /// File extension (lowercase, without dot).
+    var fileExtension: String {
+        let ext = (path as NSString).pathExtension.lowercased()
+        return ext
+    }
+
+    /// Display string for similarity (e.g., "98% similar").
+    var similarityDisplay: String? {
+        guard let percent = similarityPercentage else { return nil }
+        return "\(percent)% similar"
     }
 
     /// Creates a FileDiff.
@@ -70,7 +155,8 @@ struct FileDiff: Identifiable, Equatable {
         oldMode: String? = nil,
         newMode: String? = nil,
         oldHash: String? = nil,
-        newHash: String? = nil
+        newHash: String? = nil,
+        similarityPercentage: Int? = nil
     ) {
         self.path = path
         self.oldPath = oldPath
@@ -81,6 +167,7 @@ struct FileDiff: Identifiable, Equatable {
         self.newMode = newMode
         self.oldHash = oldHash
         self.newHash = newHash
+        self.similarityPercentage = similarityPercentage
         // Cache counts at initialization for performance
         self._additions = hunks.reduce(0) { $0 + $1.additions }
         self._deletions = hunks.reduce(0) { $0 + $1.deletions }

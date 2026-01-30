@@ -111,17 +111,16 @@ struct GitHubSectionView: View {
 }
 
 /// Combined view for working tree changes, staging, and commit creation.
+/// Uses stack-based navigation: shows file list OR maximized diff view.
 struct ChangesView: View {
     @ObservedObject var statusViewModel: StatusViewModel
     @ObservedObject var diffViewModel: DiffViewModel
     @ObservedObject var commitViewModel: CommitViewModel
 
-    @State private var isDiffFullscreen: Bool = false
-
     var body: some View {
-        HSplitView {
-            // Left panel: File list and commit
-            if !isDiffFullscreen {
+        Group {
+            if statusViewModel.selectedFile == nil {
+                // Default: File list + commit creation
                 VStack(spacing: 0) {
                     FileStatusList(viewModel: statusViewModel)
 
@@ -132,54 +131,56 @@ struct ChangesView: View {
                         canCommit: statusViewModel.canCommit
                     )
                 }
-                .frame(minWidth: 250, maxWidth: 350)
-            }
+            } else {
+                // Maximized diff view with back navigation
+                VStack(spacing: 0) {
+                    StackNavigationHeader(
+                        title: statusViewModel.selectedFile?.fileName ?? "Diff",
+                        subtitle: statusViewModel.selectedFile?.path,
+                        onBack: { statusViewModel.selectedFile = nil }
+                    )
 
-            // Right panel: Diff view
-            DiffView(viewModel: diffViewModel, isFullscreen: $isDiffFullscreen)
-                .frame(minWidth: 400)
+                    Divider()
+
+                    DiffView(viewModel: diffViewModel)
+                }
+                .onExitCommand { statusViewModel.selectedFile = nil }
+            }
         }
     }
 }
 
 /// View for commit history.
+/// Uses stack-based navigation: shows commit list OR maximized commit detail+diff view.
 struct HistoryView: View {
     @ObservedObject var historyViewModel: HistoryViewModel
     @ObservedObject var diffViewModel: DiffViewModel
 
-    @State private var isDiffFullscreen: Bool = false
+    @State private var selectedFileDiff: FileDiff?
 
     var body: some View {
-        HSplitView {
-            // Left: Commit list
-            if !isDiffFullscreen {
+        Group {
+            if historyViewModel.selectedCommit == nil {
+                // Default: Commit list only
                 CommitHistoryView(viewModel: historyViewModel)
-                    .frame(minWidth: 300, maxWidth: 400)
-            }
-
-            // Right: Commit diff or details
-            VStack {
-                if let commit = historyViewModel.selectedCommit {
-                    if !isDiffFullscreen {
-                        CommitDetailView(commit: commit)
-                            .frame(height: 150)
-
-                        Divider()
+            } else {
+                // Maximized commit detail view
+                CommitDiffContentView(
+                    commit: historyViewModel.selectedCommit!,
+                    diffViewModel: diffViewModel,
+                    selectedFileDiff: $selectedFileDiff,
+                    onBack: { historyViewModel.selectedCommit = nil }
+                )
+                .task(id: historyViewModel.selectedCommit?.hash) {
+                    if let commit = historyViewModel.selectedCommit {
+                        await diffViewModel.loadCommitDiff(for: commit.hash)
+                        selectedFileDiff = diffViewModel.allDiffs.first
                     }
-
-                    DiffView(viewModel: diffViewModel, isFullscreen: $isDiffFullscreen)
-                } else {
-                    EmptyStateView(
-                        "Select a Commit",
-                        systemImage: "clock",
-                        description: "Select a commit from the list to view its changes"
-                    )
                 }
-            }
-            .frame(minWidth: 400)
-            .task(id: historyViewModel.selectedCommit?.hash) {
-                if let commit = historyViewModel.selectedCommit {
-                    await diffViewModel.loadCommitDiff(for: commit.hash)
+                .onChange(of: selectedFileDiff) { newValue in
+                    if let diff = newValue {
+                        diffViewModel.selectFileDiff(diff)
+                    }
                 }
             }
         }

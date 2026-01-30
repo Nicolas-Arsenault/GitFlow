@@ -213,6 +213,22 @@ actor GitService {
         return try command.parse(output: output)
     }
 
+    /// Gets the content of a file at a specific revision.
+    /// - Parameters:
+    ///   - revision: The revision (commit hash, branch name, HEAD, :0 for index, etc.)
+    ///   - path: The path to the file.
+    ///   - repository: The repository.
+    /// - Returns: The file content as a string.
+    func getFileContent(at revision: String, path: String, in repository: Repository) async throws -> String {
+        // Use git show to get file content at a specific revision
+        // Format: git show <revision>:<path>
+        let arguments = ["show", "\(revision):\(path)"]
+        return try await executor.executeOrThrow(
+            arguments: arguments,
+            workingDirectory: repository.rootURL
+        )
+    }
+
     // MARK: - Patch Operations
 
     /// Generates a patch for staged changes.

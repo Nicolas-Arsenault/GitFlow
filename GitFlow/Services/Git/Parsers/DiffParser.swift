@@ -47,6 +47,43 @@ enum DiffParser {
                 currentFile?.newMode = String(line.dropFirst(14))
                 currentFile?.changeType = .added
             }
+            // Similarity index (for renames/copies)
+            // Format: "similarity index 98%"
+            else if line.hasPrefix("similarity index ") {
+                let percentStr = line.dropFirst(17).dropLast() // Remove "similarity index " and "%"
+                currentFile?.similarityPercentage = Int(percentStr)
+            }
+            // Rename from (explicit rename detection)
+            // Format: "rename from oldpath"
+            else if line.hasPrefix("rename from ") {
+                currentFile?.oldPath = String(line.dropFirst(12))
+                currentFile?.changeType = .renamed
+            }
+            // Rename to
+            // Format: "rename to newpath"
+            else if line.hasPrefix("rename to ") {
+                currentFile?.path = String(line.dropFirst(10))
+            }
+            // Copy from (copy detection)
+            // Format: "copy from sourcepath"
+            else if line.hasPrefix("copy from ") {
+                currentFile?.oldPath = String(line.dropFirst(10))
+                currentFile?.changeType = .copied
+            }
+            // Copy to
+            // Format: "copy to destpath"
+            else if line.hasPrefix("copy to ") {
+                currentFile?.path = String(line.dropFirst(8))
+            }
+            // Dissimilarity index (for rewrites)
+            // Format: "dissimilarity index 85%"
+            else if line.hasPrefix("dissimilarity index ") {
+                let percentStr = line.dropFirst(20).dropLast() // Remove "dissimilarity index " and "%"
+                if let dissimilarity = Int(percentStr) {
+                    // Convert dissimilarity to similarity
+                    currentFile?.similarityPercentage = 100 - dissimilarity
+                }
+            }
             // Index line (hash info)
             else if line.hasPrefix("index ") {
                 currentFile?.parseIndexLine(line)
@@ -119,6 +156,7 @@ private class FileDiffBuilder {
     var newMode: String?
     var oldHash: String?
     var newHash: String?
+    var similarityPercentage: Int?
 
     // Static regex to avoid recompilation for each diff
     private static let diffHeaderRegex: NSRegularExpression? = {
@@ -168,7 +206,8 @@ private class FileDiffBuilder {
             oldMode: oldMode,
             newMode: newMode,
             oldHash: oldHash,
-            newHash: newHash
+            newHash: newHash,
+            similarityPercentage: similarityPercentage
         )
     }
 }

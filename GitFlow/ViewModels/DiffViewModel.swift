@@ -10,6 +10,7 @@ final class DiffViewModel: ObservableObject {
     enum ViewMode: String, CaseIterable, Identifiable {
         case unified = "Unified"
         case split = "Split"
+        case structure = "Structure"
 
         var id: String { rawValue }
     }
@@ -80,6 +81,46 @@ final class DiffViewModel: ObservableObject {
 
     /// Whether line selection mode is active.
     @Published var isLineSelectionMode: Bool = false
+
+    /// Noise suppression options for filtering diffs.
+    @Published var noiseOptions: NoiseSuppressionOptions = .default
+
+    // MARK: - Structural Analysis
+
+    /// Structural changes detected in the current diff.
+    @Published private(set) var structuralChanges: [StructuralChange] = []
+
+    /// Code entities from the old version.
+    @Published private(set) var oldEntities: [CodeEntity] = []
+
+    /// Code entities from the new version.
+    @Published private(set) var newEntities: [CodeEntity] = []
+
+    /// Semantic equivalences detected in the current diff.
+    @Published private(set) var semanticEquivalences: [SemanticEquivalence] = []
+
+    /// Change impact analysis for the current diff.
+    @Published private(set) var changeImpact: ChangeImpactAnalysis?
+
+    /// Whether structural analysis is loading.
+    @Published private(set) var isStructuralAnalysisLoading: Bool = false
+
+    // MARK: - Computed Properties for Filtered Diffs
+
+    /// All diffs after applying noise suppression filters.
+    var filteredDiffs: [FileDiff] {
+        noiseOptions.apply(to: allDiffs)
+    }
+
+    /// Count of hidden files due to noise suppression.
+    var hiddenFileCount: Int {
+        allDiffs.count - filteredDiffs.count
+    }
+
+    /// Whether any files are currently hidden.
+    var hasHiddenFiles: Bool {
+        hiddenFileCount > 0
+    }
 
     // MARK: - Dependencies
 
@@ -276,6 +317,113 @@ final class DiffViewModel: ObservableObject {
     func clearBlame() {
         blameLines = []
         showBlame = false
+    }
+
+    // MARK: - Structural Analysis
+
+    /// Performs structural analysis on the current diff.
+    /// This analyzes code structure changes (classes, functions, etc.) and detects semantic equivalences.
+    func performStructuralAnalysis() async {
+        guard let diff = currentDiff else { return }
+
+        // Only analyze Swift files for now
+        guard diff.path.hasSuffix(".swift") else {
+            structuralChanges = []
+            oldEntities = []
+            newEntities = []
+            semanticEquivalences = []
+            changeImpact = nil
+            return
+        }
+
+        isStructuralAnalysisLoading = true
+        defer { isStructuralAnalysisLoading = false }
+
+        // Get old and new file contents
+        let oldContent: String
+        let newContent: String
+
+        switch diffSource {
+        case .commit(let hash):
+            // Get content from parent commit and current commit
+            oldContent = (try? await gitService.getFileContent(
+                at: "\(hash)^",
+                path: diff.oldPath ?? diff.path,
+                in: repository
+            )) ?? ""
+            newContent = (try? await gitService.getFileContent(
+                at: hash,
+                path: diff.path,
+                in: repository
+            )) ?? ""
+        case .staged:
+            // Get content from HEAD and index
+            oldContent = (try? await gitService.getFileContent(
+                at: "HEAD",
+                path: diff.oldPath ?? diff.path,
+                in: repository
+            )) ?? ""
+            newContent = (try? await gitService.getFileContent(
+                at: ":0",  // Index/staged version
+                path: diff.path,
+                in: repository
+            )) ?? ""
+        case .unstaged:
+            // Get content from index and working tree
+            let indexContent = try? await gitService.getFileContent(
+                at: ":0",
+                path: diff.path,
+                in: repository
+            )
+            if let index = indexContent {
+                oldContent = index
+            } else {
+                oldContent = (try? await gitService.getFileContent(
+                    at: "HEAD",
+                    path: diff.path,
+                    in: repository
+                )) ?? ""
+            }
+            // Read working tree file directly
+            let fileURL = repository.rootURL.appendingPathComponent(diff.path)
+            newContent = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+        case .none:
+            oldContent = ""
+            newContent = ""
+        }
+
+        // Parse structures
+        let parser = SwiftStructureParser()
+        oldEntities = parser.parse(oldContent)
+        newEntities = parser.parse(newContent)
+
+        // Compute structural changes
+        let diffComputer = StructuralDiffComputer()
+        structuralChanges = diffComputer.computeDiff(
+            oldSource: oldContent,
+            newSource: newContent
+        )
+
+        // Detect semantic equivalences
+        let detector = SemanticEquivalenceDetector()
+        semanticEquivalences = detector.detect(in: allDiffs)
+
+        // Analyze change impact
+        let impactAnalyzer = ChangeImpactAnalyzer()
+        changeImpact = impactAnalyzer.analyze(
+            diffs: allDiffs,
+            structuralChanges: structuralChanges,
+            repositoryFiles: []  // Would need to get list of files in repo for full analysis
+        )
+    }
+
+    /// Clears structural analysis data.
+    func clearStructuralAnalysis() {
+        structuralChanges = []
+        oldEntities = []
+        newEntities = []
+        semanticEquivalences = []
+        changeImpact = nil
     }
 
     // MARK: - Navigation
