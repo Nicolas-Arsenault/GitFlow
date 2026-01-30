@@ -127,10 +127,7 @@ struct ErrorAlertModifier: ViewModifier {
         content
             .alert(
                 "Something went wrong",
-                isPresented: .init(
-                    get: { error != nil },
-                    set: { if !$0 { error = nil } }
-                )
+                isPresented: $error.isPresent()
             ) {
                 Button("Dismiss") { error = nil }
 

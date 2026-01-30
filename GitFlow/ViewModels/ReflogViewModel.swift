@@ -4,7 +4,7 @@ import Foundation
 /// The reflog records when the tips of branches and other references were updated,
 /// allowing users to recover lost commits and branches.
 @MainActor
-final class ReflogViewModel: ObservableObject {
+final class ReflogViewModel: BaseViewModel {
     // MARK: - Published State
 
     /// All reflog entries.
@@ -15,15 +15,6 @@ final class ReflogViewModel: ObservableObject {
 
     /// The currently selected reflog entry.
     @Published var selectedEntry: ReflogEntry?
-
-    /// Whether reflog is loading.
-    @Published private(set) var isLoading: Bool = false
-
-    /// Whether an operation is in progress.
-    @Published private(set) var isOperationInProgress: Bool = false
-
-    /// Current error, if any.
-    @Published var error: GitError?
 
     /// The current search/filter query.
     @Published var searchQuery: String = "" {
@@ -58,27 +49,19 @@ final class ReflogViewModel: ObservableObject {
 
     /// Refreshes the reflog entries.
     func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            if let branch = branchFilter {
-                entries = try await gitService.getBranchReflog(branchName: branch, in: repository)
+        await performOperation {
+            if let branch = self.branchFilter {
+                self.entries = try await self.gitService.getBranchReflog(branchName: branch, in: self.repository)
             } else {
-                entries = try await gitService.getReflog(in: repository)
+                self.entries = try await self.gitService.getReflog(in: self.repository)
             }
-            applyFilter()
-            error = nil
+            self.applyFilter()
 
             // Clear selection if entry no longer exists
-            if let selected = selectedEntry,
-               !entries.contains(where: { $0.selector == selected.selector }) {
-                selectedEntry = nil
+            if let selected = self.selectedEntry,
+               !self.entries.contains(where: { $0.selector == selected.selector }) {
+                self.selectedEntry = nil
             }
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
         }
     }
 
@@ -86,85 +69,54 @@ final class ReflogViewModel: ObservableObject {
     func loadMore() async {
         guard !isLoading else { return }
 
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            let currentCount = entries.count
+        await performOperation {
+            let currentCount = self.entries.count
             let moreEntries: [ReflogEntry]
 
-            if let branch = branchFilter {
-                moreEntries = try await gitService.getBranchReflog(
+            if let branch = self.branchFilter {
+                moreEntries = try await self.gitService.getBranchReflog(
                     branchName: branch,
-                    in: repository,
+                    in: self.repository,
                     limit: currentCount + 100
                 )
             } else {
-                moreEntries = try await gitService.getReflog(
-                    in: repository,
+                moreEntries = try await self.gitService.getReflog(
+                    in: self.repository,
                     limit: currentCount + 100
                 )
             }
 
             // Only add entries that aren't already in our list
             let newEntries = moreEntries.filter { newEntry in
-                !entries.contains(where: { $0.selector == newEntry.selector })
+                !self.entries.contains(where: { $0.selector == newEntry.selector })
             }
 
-            entries.append(contentsOf: newEntries)
-            applyFilter()
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+            self.entries.append(contentsOf: newEntries)
+            self.applyFilter()
         }
     }
 
     /// Checks out the commit from the selected reflog entry.
     /// Note: This will result in a detached HEAD state.
     func checkoutEntry(_ entry: ReflogEntry) async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.checkoutReflogEntry(entry, in: repository)
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.checkoutReflogEntry(entry, in: self.repository)
         }
     }
 
     /// Creates a new branch from the selected reflog entry.
     /// This is useful for recovering lost branches.
     func createBranch(named name: String, from entry: ReflogEntry) async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.createBranchFromReflogEntry(name: name, entry: entry, in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.createBranchFromReflogEntry(name: name, entry: entry, in: self.repository)
         }
+        await refresh()
     }
 
     /// Cherry-picks the commit from a reflog entry.
     func cherryPickEntry(_ entry: ReflogEntry) async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.cherryPick(commitHash: entry.hash, in: repository)
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.cherryPick(commitHash: entry.hash, in: self.repository)
         }
     }
 

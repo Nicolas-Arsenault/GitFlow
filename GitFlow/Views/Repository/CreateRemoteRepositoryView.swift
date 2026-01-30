@@ -1,5 +1,10 @@
 import SwiftUI
 
+// Notification name extension for clone repository action
+extension Notification.Name {
+    static let cloneRepository = Notification.Name("cloneRepository")
+}
+
 /// View for creating a new repository on a remote service (GitHub, GitLab, etc.)
 struct CreateRemoteRepositoryView: View {
     @StateObject private var viewModel = CreateRemoteRepositoryViewModel()
@@ -208,16 +213,6 @@ class CreateRemoteRepositoryViewModel: ObservableObject {
         case .github:
             // Check GitHub auth
             isServiceAuthenticated = true // Placeholder
-        case .gitlab:
-            isServiceAuthenticated = true // Placeholder
-        case .bitbucket:
-            isServiceAuthenticated = true // Placeholder
-        case .azureDevOps:
-            isServiceAuthenticated = true // Placeholder
-        case .gitea:
-            isServiceAuthenticated = true // Placeholder
-        case .beanstalk:
-            isServiceAuthenticated = true // Placeholder
         }
     }
 
@@ -227,16 +222,6 @@ class CreateRemoteRepositoryViewModel: ObservableObject {
         case .github:
             // Placeholder - would call GitHub API
             organizations = ["my-org", "other-org"]
-        case .gitlab:
-            organizations = []
-        case .bitbucket:
-            organizations = []
-        case .azureDevOps:
-            organizations = []
-        case .gitea:
-            organizations = []
-        case .beanstalk:
-            organizations = []
         }
     }
 
@@ -292,16 +277,6 @@ class CreateRemoteRepositoryViewModel: ObservableObject {
         switch selectedService {
         case .github:
             return try await createGitHubRepository()
-        case .gitlab:
-            return try await createGitLabRepository()
-        case .bitbucket:
-            return try await createBitbucketRepository()
-        case .azureDevOps:
-            return try await createAzureDevOpsRepository()
-        case .gitea:
-            return try await createGiteaRepository()
-        case .beanstalk:
-            return try await createBeanstalkRepository()
         }
     }
 
@@ -317,100 +292,30 @@ class CreateRemoteRepositoryViewModel: ObservableObject {
             htmlURL: "https://github.com/\(selectedOrganization ?? "user")/\(repositoryName)"
         )
     }
-
-    private func createGitLabRepository() async throws -> CreatedRepository {
-        // POST /projects
-        return CreatedRepository(
-            name: repositoryName,
-            fullName: repositoryName,
-            cloneURL: "https://gitlab.com/user/\(repositoryName).git",
-            htmlURL: "https://gitlab.com/user/\(repositoryName)"
-        )
-    }
-
-    private func createBitbucketRepository() async throws -> CreatedRepository {
-        // POST /repositories/{workspace}/{repo_slug}
-        return CreatedRepository(
-            name: repositoryName,
-            fullName: repositoryName,
-            cloneURL: "https://bitbucket.org/user/\(repositoryName).git",
-            htmlURL: "https://bitbucket.org/user/\(repositoryName)"
-        )
-    }
-
-    private func createAzureDevOpsRepository() async throws -> CreatedRepository {
-        // POST /{organization}/{project}/_apis/git/repositories
-        return CreatedRepository(
-            name: repositoryName,
-            fullName: repositoryName,
-            cloneURL: "https://dev.azure.com/org/project/_git/\(repositoryName)",
-            htmlURL: "https://dev.azure.com/org/project/_git/\(repositoryName)"
-        )
-    }
-
-    private func createGiteaRepository() async throws -> CreatedRepository {
-        // POST /user/repos or POST /orgs/{org}/repos
-        return CreatedRepository(
-            name: repositoryName,
-            fullName: repositoryName,
-            cloneURL: "https://gitea.example.com/user/\(repositoryName).git",
-            htmlURL: "https://gitea.example.com/user/\(repositoryName)"
-        )
-    }
-
-    private func createBeanstalkRepository() async throws -> CreatedRepository {
-        // POST /repositories.json
-        return CreatedRepository(
-            name: repositoryName,
-            fullName: repositoryName,
-            cloneURL: "git@account.beanstalkapp.com:/\(repositoryName).git",
-            htmlURL: "https://account.beanstalkapp.com/\(repositoryName)"
-        )
-    }
 }
 
 // MARK: - Data Models
 
 enum RemoteService: String, CaseIterable, Identifiable {
     case github
-    case gitlab
-    case bitbucket
-    case azureDevOps
-    case gitea
-    case beanstalk
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .github: return "GitHub"
-        case .gitlab: return "GitLab"
-        case .bitbucket: return "Bitbucket"
-        case .azureDevOps: return "Azure DevOps"
-        case .gitea: return "Gitea"
-        case .beanstalk: return "Beanstalk"
         }
     }
 
     var icon: String {
         switch self {
         case .github: return "arrow.triangle.branch"
-        case .gitlab: return "chevron.left.forwardslash.chevron.right"
-        case .bitbucket: return "bucket"
-        case .azureDevOps: return "cloud"
-        case .gitea: return "cup.and.saucer"
-        case .beanstalk: return "leaf"
         }
     }
 
     var color: Color {
         switch self {
         case .github: return .primary
-        case .gitlab: return .orange
-        case .bitbucket: return .blue
-        case .azureDevOps: return .blue
-        case .gitea: return .green
-        case .beanstalk: return .green
         }
     }
 }

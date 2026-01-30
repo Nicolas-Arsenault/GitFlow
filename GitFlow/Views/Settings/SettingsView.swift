@@ -306,48 +306,40 @@ struct GitSettingsView: View {
 /// Service accounts management.
 struct AccountsSettingsView: View {
     @State private var isGitHubConnected: Bool = false
-    @State private var isGitLabConnected: Bool = false
-    @State private var isBitbucketConnected: Bool = false
-    @State private var isAzureDevOpsConnected: Bool = false
-
-    @State private var showAddAccountSheet: Bool = false
-    @State private var serviceToConnect: AccountService?
+    @State private var showConnectSheet: Bool = false
 
     private let keychainService = KeychainService.shared
 
     var body: some View {
         Form {
-            Section("Connected Accounts") {
-                AccountRow(
-                    service: .github,
-                    isConnected: isGitHubConnected,
-                    onConnect: { serviceToConnect = .github },
-                    onDisconnect: { disconnectService(.github) }
-                )
-                AccountRow(
-                    service: .gitlab,
-                    isConnected: isGitLabConnected,
-                    onConnect: { serviceToConnect = .gitlab },
-                    onDisconnect: { disconnectService(.gitlab) }
-                )
-                AccountRow(
-                    service: .bitbucket,
-                    isConnected: isBitbucketConnected,
-                    onConnect: { serviceToConnect = .bitbucket },
-                    onDisconnect: { disconnectService(.bitbucket) }
-                )
-                AccountRow(
-                    service: .azureDevOps,
-                    isConnected: isAzureDevOpsConnected,
-                    onConnect: { serviceToConnect = .azureDevOps },
-                    onDisconnect: { disconnectService(.azureDevOps) }
-                )
+            Section("GitHub Account") {
+                HStack {
+                    Image(systemName: "link.circle")
+                        .foregroundColor(isGitHubConnected ? .blue : .secondary)
+                    Text("GitHub")
+                    Spacer()
+                    if isGitHubConnected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Button("Disconnect") {
+                            disconnectGitHub()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    } else {
+                        Button("Connect") {
+                            showConnectSheet = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                }
             }
 
             Section {
-                Button("Add Account...") {
-                    showAddAccountSheet = true
-                }
+                Text("Connect your GitHub account to access pull requests, create repositories, and more.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -355,24 +347,12 @@ struct AccountsSettingsView: View {
         .onAppear {
             checkConnectionStatus()
         }
-        .sheet(item: $serviceToConnect) { service in
-            TokenInputSheet(
-                service: service,
-                onDismiss: { serviceToConnect = nil },
+        .sheet(isPresented: $showConnectSheet) {
+            GitHubTokenInputSheet(
+                onDismiss: { showConnectSheet = false },
                 onSave: { token in
-                    saveToken(token, for: service)
-                    serviceToConnect = nil
-                }
-            )
-        }
-        .sheet(isPresented: $showAddAccountSheet) {
-            AddAccountSheet(
-                isPresented: $showAddAccountSheet,
-                onSelectService: { service in
-                    showAddAccountSheet = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        serviceToConnect = service
-                    }
+                    saveGitHubToken(token)
+                    showConnectSheet = false
                 }
             )
         }
@@ -380,119 +360,25 @@ struct AccountsSettingsView: View {
 
     private func checkConnectionStatus() {
         isGitHubConnected = keychainService.retrieve(for: KeychainAccount.githubToken) != nil
-        isGitLabConnected = keychainService.retrieve(for: KeychainAccount.gitlabToken) != nil
-        isBitbucketConnected = keychainService.retrieve(for: KeychainAccount.bitbucketToken) != nil
-        isAzureDevOpsConnected = keychainService.retrieve(for: KeychainAccount.azureDevOpsToken) != nil
     }
 
-    private func saveToken(_ token: String, for service: AccountService) {
+    private func saveGitHubToken(_ token: String) {
         do {
-            try keychainService.save(token, for: service.keychainAccount)
+            try keychainService.save(token, for: KeychainAccount.githubToken)
             checkConnectionStatus()
         } catch {
             print("Failed to save token: \(error)")
         }
     }
 
-    private func disconnectService(_ service: AccountService) {
-        try? keychainService.delete(for: service.keychainAccount)
+    private func disconnectGitHub() {
+        try? keychainService.delete(for: KeychainAccount.githubToken)
         checkConnectionStatus()
     }
 }
 
-/// Supported account services.
-enum AccountService: String, CaseIterable, Identifiable {
-    case github = "GitHub"
-    case gitlab = "GitLab"
-    case bitbucket = "Bitbucket"
-    case azureDevOps = "Azure DevOps"
-
-    var id: String { rawValue }
-
-    var icon: String {
-        switch self {
-        case .github: return "link.circle"
-        case .gitlab: return "g.circle"
-        case .bitbucket: return "b.circle"
-        case .azureDevOps: return "a.circle"
-        }
-    }
-
-    var keychainAccount: String {
-        switch self {
-        case .github: return KeychainAccount.githubToken
-        case .gitlab: return KeychainAccount.gitlabToken
-        case .bitbucket: return KeychainAccount.bitbucketToken
-        case .azureDevOps: return KeychainAccount.azureDevOpsToken
-        }
-    }
-
-    var tokenName: String {
-        switch self {
-        case .github: return "Personal Access Token"
-        case .gitlab: return "Personal Access Token"
-        case .bitbucket: return "App Password"
-        case .azureDevOps: return "Personal Access Token"
-        }
-    }
-
-    var tokenHelpURL: URL? {
-        switch self {
-        case .github:
-            return URL(string: "https://github.com/settings/tokens/new")
-        case .gitlab:
-            return URL(string: "https://gitlab.com/-/profile/personal_access_tokens")
-        case .bitbucket:
-            return URL(string: "https://bitbucket.org/account/settings/app-passwords/")
-        case .azureDevOps:
-            return URL(string: "https://dev.azure.com/_usersSettings/tokens")
-        }
-    }
-
-    var requiredScopes: [String] {
-        switch self {
-        case .github: return ["repo", "read:org"]
-        case .gitlab: return ["api", "read_user"]
-        case .bitbucket: return ["repository", "pullrequest"]
-        case .azureDevOps: return ["Code (Read & Write)", "Work Items (Read)"]
-        }
-    }
-}
-
-struct AccountRow: View {
-    let service: AccountService
-    let isConnected: Bool
-    let onConnect: () -> Void
-    let onDisconnect: () -> Void
-
-    var body: some View {
-        HStack {
-            Image(systemName: service.icon)
-                .foregroundColor(isConnected ? .blue : .secondary)
-            Text(service.rawValue)
-            Spacer()
-            if isConnected {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                Button("Disconnect") {
-                    onDisconnect()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            } else {
-                Button("Connect") {
-                    onConnect()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-            }
-        }
-    }
-}
-
-/// Sheet for inputting a token for a service.
-struct TokenInputSheet: View {
-    let service: AccountService
+/// Sheet for inputting GitHub token.
+struct GitHubTokenInputSheet: View {
     let onDismiss: () -> Void
     let onSave: (String) -> Void
 
@@ -502,7 +388,7 @@ struct TokenInputSheet: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Connect to \(service.rawValue)")
+                Text("Connect to GitHub")
                     .font(.headline)
                 Spacer()
                 Button(action: { onDismiss() }) {
@@ -517,11 +403,11 @@ struct TokenInputSheet: View {
 
             // Content
             VStack(alignment: .leading, spacing: 16) {
-                Text("Enter your \(service.rawValue) \(service.tokenName) to connect your account.")
+                Text("Enter your GitHub Personal Access Token to connect your account.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
-                SecureField(service.tokenName, text: $token)
+                SecureField("Personal Access Token", text: $token)
                     .textFieldStyle(.roundedBorder)
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -530,7 +416,7 @@ struct TokenInputSheet: View {
                         .foregroundStyle(.secondary)
 
                     HStack(spacing: 8) {
-                        ForEach(service.requiredScopes, id: \.self) { scope in
+                        ForEach(["repo", "read:org"], id: \.self) { scope in
                             Text(scope)
                                 .font(.caption.monospaced())
                                 .padding(.horizontal, 6)
@@ -541,10 +427,8 @@ struct TokenInputSheet: View {
                     }
                 }
 
-                if let url = service.tokenHelpURL {
-                    Link("Create a new \(service.tokenName.lowercased())", destination: url)
-                        .font(.caption)
-                }
+                Link("Create a new personal access token", destination: URL(string: "https://github.com/settings/tokens/new")!)
+                    .font(.caption)
             }
             .padding()
 
@@ -572,71 +456,6 @@ struct TokenInputSheet: View {
     }
 }
 
-/// Sheet for selecting which account to add.
-struct AddAccountSheet: View {
-    @Binding var isPresented: Bool
-    let onSelectService: (AccountService) -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Add Account")
-                    .font(.headline)
-                Spacer()
-                Button(action: { isPresented = false }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding()
-
-            Divider()
-
-            // Services list
-            VStack(spacing: 8) {
-                ForEach(AccountService.allCases) { service in
-                    Button {
-                        onSelectService(service)
-                    } label: {
-                        HStack {
-                            Image(systemName: service.icon)
-                                .frame(width: 24)
-                            Text(service.rawValue)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-
-                    if service != AccountService.allCases.last {
-                        Divider()
-                            .padding(.leading, 44)
-                    }
-                }
-            }
-            .padding()
-
-            Divider()
-
-            // Cancel
-            HStack {
-                Spacer()
-                Button("Cancel") {
-                    isPresented = false
-                }
-                .keyboardShortcut(.cancelAction)
-            }
-            .padding()
-        }
-        .frame(width: 350)
-    }
-}
 
 // MARK: - Appearance Settings Tab
 

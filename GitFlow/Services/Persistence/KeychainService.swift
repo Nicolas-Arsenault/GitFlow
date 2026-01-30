@@ -188,16 +188,4 @@ enum KeychainAccount {
 
     /// GitHub OAuth client secret.
     static let githubClientSecret = "github_client_secret"
-
-    /// GitLab personal access token for API authentication.
-    static let gitlabToken = "gitlab_personal_access_token"
-
-    /// GitLab self-hosted instance host (e.g., gitlab.example.com).
-    static let gitlabHost = "gitlab_host"
-
-    /// Bitbucket app password for API authentication.
-    static let bitbucketToken = "bitbucket_app_password"
-
-    /// Azure DevOps personal access token.
-    static let azureDevOpsToken = "azure_devops_personal_access_token"
 }

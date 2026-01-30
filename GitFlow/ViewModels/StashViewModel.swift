@@ -2,7 +2,7 @@ import Foundation
 
 /// View model for stash management.
 @MainActor
-final class StashViewModel: ObservableObject {
+final class StashViewModel: BaseViewModel {
     // MARK: - Published State
 
     /// All stashes.
@@ -10,15 +10,6 @@ final class StashViewModel: ObservableObject {
 
     /// The currently selected stash.
     @Published var selectedStash: Stash?
-
-    /// Whether stashes are loading.
-    @Published private(set) var isLoading: Bool = false
-
-    /// Whether an operation is in progress.
-    @Published private(set) var isOperationInProgress: Bool = false
-
-    /// Current error, if any.
-    @Published var error: GitError?
 
     // MARK: - Dependencies
 
@@ -36,22 +27,14 @@ final class StashViewModel: ObservableObject {
 
     /// Refreshes the stash list.
     func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            stashes = try await gitService.getStashes(in: repository)
-            error = nil
+        await performOperation {
+            self.stashes = try await self.gitService.getStashes(in: self.repository)
 
             // Clear selection if stash no longer exists
-            if let selected = selectedStash,
-               !stashes.contains(where: { $0.index == selected.index }) {
-                selectedStash = nil
+            if let selected = self.selectedStash,
+               !self.stashes.contains(where: { $0.index == selected.index }) {
+                self.selectedStash = nil
             }
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
         }
     }
 
@@ -61,23 +44,15 @@ final class StashViewModel: ObservableObject {
     ///   - includeUntracked: Whether to include untracked files.
     ///   - includeIgnored: Whether to include ignored files (implies includeUntracked).
     func createStash(message: String? = nil, includeUntracked: Bool = false, includeIgnored: Bool = false) async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.createStash(
+        await performOperation(showLoading: false) {
+            try await self.gitService.createStash(
                 message: message,
                 includeUntracked: includeUntracked,
                 includeIgnored: includeIgnored,
-                in: repository
+                in: self.repository
             )
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
         }
+        await refresh()
     }
 
     /// Renames a stash by dropping and recreating it with a new message.
@@ -86,81 +61,41 @@ final class StashViewModel: ObservableObject {
     ///   - stash: The stash to rename.
     ///   - newMessage: The new message for the stash.
     func renameStash(_ stash: Stash, to newMessage: String) async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.renameStash(stash.refName, to: newMessage, in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.renameStash(stash.refName, to: newMessage, in: self.repository)
         }
+        await refresh()
     }
 
     /// Applies a stash without removing it.
     func applyStash(_ stash: Stash) async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.applyStash(stash.refName, in: repository)
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.applyStash(stash.refName, in: self.repository)
         }
     }
 
     /// Pops a stash (apply and remove).
     func popStash(_ stash: Stash) async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.popStash(stash.refName, in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.popStash(stash.refName, in: self.repository)
         }
+        await refresh()
     }
 
     /// Drops a stash.
     func dropStash(_ stash: Stash) async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.dropStash(stash.refName, in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.dropStash(stash.refName, in: self.repository)
         }
+        await refresh()
     }
 
     /// Clears all stashes.
     func clearAllStashes() async {
-        isOperationInProgress = true
-        defer { isOperationInProgress = false }
-
-        do {
-            try await gitService.clearStashes(in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.clearStashes(in: self.repository)
         }
+        await refresh()
     }
 
     // MARK: - Computed Properties

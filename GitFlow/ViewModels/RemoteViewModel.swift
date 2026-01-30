@@ -2,23 +2,14 @@ import Foundation
 
 /// View model for remote operations.
 @MainActor
-final class RemoteViewModel: ObservableObject {
+final class RemoteViewModel: BaseViewModel {
     // MARK: - Published State
 
     /// All remotes.
     @Published private(set) var remotes: [Remote] = []
 
-    /// Whether remotes are loading.
-    @Published private(set) var isLoading: Bool = false
-
-    /// Whether an operation is in progress.
-    @Published private(set) var isOperationInProgress: Bool = false
-
     /// Progress message for current operation.
     @Published private(set) var operationMessage: String?
-
-    /// Current error, if any.
-    @Published var error: GitError?
 
     /// Last fetch timestamp.
     @Published private(set) var lastFetchDate: Date?
@@ -39,94 +30,50 @@ final class RemoteViewModel: ObservableObject {
 
     /// Refreshes the remote list.
     func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            remotes = try await gitService.getRemotes(in: repository)
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation {
+            self.remotes = try await self.gitService.getRemotes(in: self.repository)
         }
     }
 
     /// Fetches from all remotes.
     func fetchAll(prune: Bool = false) async {
-        isOperationInProgress = true
         operationMessage = "Fetching from all remotes..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.fetch(in: repository, prune: prune)
-            lastFetchDate = Date()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.fetch(in: self.repository, prune: prune)
+            self.lastFetchDate = Date()
         }
     }
 
     /// Fetches from a specific remote.
     func fetch(remote: String, prune: Bool = false) async {
-        isOperationInProgress = true
         operationMessage = "Fetching from \(remote)..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.fetch(in: repository, remote: remote, prune: prune)
-            lastFetchDate = Date()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.fetch(in: self.repository, remote: remote, prune: prune)
+            self.lastFetchDate = Date()
         }
     }
 
     /// Pulls changes from remote.
     func pull(remote: String? = nil, branch: String? = nil, rebase: Bool = false) async {
-        isOperationInProgress = true
         operationMessage = "Pulling changes..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.pull(in: repository, remote: remote, branch: branch, rebase: rebase)
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.pull(in: self.repository, remote: remote, branch: branch, rebase: rebase)
         }
     }
 
     /// Pushes changes to remote.
     func push(remote: String? = nil, branch: String? = nil, setUpstream: Bool = false, force: Bool = false) async {
-        isOperationInProgress = true
         operationMessage = force ? "Force pushing..." : "Pushing changes..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.push(in: repository, remote: remote, branch: branch, setUpstream: setUpstream, force: force)
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.push(in: self.repository, remote: remote, branch: branch, setUpstream: setUpstream, force: force)
         }
     }
 
@@ -134,82 +81,46 @@ final class RemoteViewModel: ObservableObject {
 
     /// Adds a new remote.
     func addRemote(name: String, url: String) async {
-        isOperationInProgress = true
         operationMessage = "Adding remote \(name)..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.addRemote(name: name, url: url, in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.addRemote(name: name, url: url, in: self.repository)
         }
+        await refresh()
     }
 
     /// Removes a remote.
     func removeRemote(name: String) async {
-        isOperationInProgress = true
         operationMessage = "Removing remote \(name)..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.removeRemote(name: name, in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.removeRemote(name: name, in: self.repository)
         }
+        await refresh()
     }
 
     /// Renames a remote.
     func renameRemote(oldName: String, newName: String) async {
-        isOperationInProgress = true
         operationMessage = "Renaming remote..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.renameRemote(oldName: oldName, newName: newName, in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.renameRemote(oldName: oldName, newName: newName, in: self.repository)
         }
+        await refresh()
     }
 
     /// Sets the URL of a remote.
     func setRemoteURL(name: String, url: String) async {
-        isOperationInProgress = true
         operationMessage = "Updating remote URL..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.setRemoteURL(name: name, url: url, in: repository)
-            await refresh()
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.setRemoteURL(name: name, url: url, in: self.repository)
         }
+        await refresh()
     }
 
     // MARK: - Computed Properties
@@ -231,20 +142,11 @@ final class RemoteViewModel: ObservableObject {
 
     /// Prunes deleted remote branches.
     func prune(remote: String) async {
-        isOperationInProgress = true
         operationMessage = "Pruning \(remote)..."
-        defer {
-            isOperationInProgress = false
-            operationMessage = nil
-        }
+        defer { operationMessage = nil }
 
-        do {
-            try await gitService.fetch(in: repository, remote: remote, prune: true)
-            error = nil
-        } catch let gitError as GitError {
-            error = gitError
-        } catch {
-            self.error = .unknown(message: error.localizedDescription)
+        await performOperation(showLoading: false) {
+            try await self.gitService.fetch(in: self.repository, remote: remote, prune: true)
         }
     }
 }

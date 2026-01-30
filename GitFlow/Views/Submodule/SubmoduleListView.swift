@@ -15,7 +15,9 @@ struct SubmoduleListView: View {
             Divider()
 
             // Content
-            if viewModel.submodules.isEmpty && !viewModel.isLoading {
+            if viewModel.isLoading && viewModel.submodules.isEmpty {
+                LoadingView("Loading submodules...")
+            } else if viewModel.submodules.isEmpty {
                 EmptyStateView(
                     "No Submodules",
                     systemImage: "folder.badge.gearshape",

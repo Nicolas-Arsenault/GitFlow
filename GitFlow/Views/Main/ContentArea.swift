@@ -46,16 +46,6 @@ struct ContentArea: View {
             PullRequestsSectionView(viewModel: viewModel)
         case .github:
             GitHubSectionView(viewModel: viewModel)
-        case .gitlab:
-            GitLabSectionView(viewModel: viewModel)
-        case .bitbucket:
-            BitbucketSectionView(viewModel: viewModel)
-        case .azureDevOps:
-            AzureDevOpsSectionView(viewModel: viewModel)
-        case .gitea:
-            GiteaSectionView(viewModel: viewModel)
-        case .beanstalk:
-            BeanstalkSectionView(viewModel: viewModel)
         }
     }
 }
@@ -274,72 +264,22 @@ struct WorktreesSectionView: View {
 /// Wrapper view for pull requests (unified across services).
 struct PullRequestsSectionView: View {
     @ObservedObject var viewModel: RepositoryViewModel
+    @StateObject private var githubViewModel: GitHubViewModel
+
+    init(viewModel: RepositoryViewModel) {
+        self.viewModel = viewModel
+        self._githubViewModel = StateObject(wrappedValue: GitHubViewModel(
+            repository: viewModel.repository,
+            gitService: viewModel.gitService
+        ))
+    }
 
     var body: some View {
         UnifiedPullRequestsView(repository: viewModel.repository)
-    }
-}
-
-/// Wrapper view for GitLab integration.
-struct GitLabSectionView: View {
-    @ObservedObject var viewModel: RepositoryViewModel
-    @StateObject private var gitLabViewModel: GitLabViewModel
-
-    init(viewModel: RepositoryViewModel) {
-        self.viewModel = viewModel
-        self._gitLabViewModel = StateObject(wrappedValue: GitLabViewModel(
-            repository: viewModel.repository,
-            gitService: viewModel.gitService
-        ))
-    }
-
-    var body: some View {
-        GitLabView(viewModel: gitLabViewModel)
-    }
-}
-
-/// Wrapper view for Bitbucket integration.
-struct BitbucketSectionView: View {
-    @ObservedObject var viewModel: RepositoryViewModel
-    @StateObject private var bitbucketViewModel: BitbucketViewModel
-
-    init(viewModel: RepositoryViewModel) {
-        self.viewModel = viewModel
-        self._bitbucketViewModel = StateObject(wrappedValue: BitbucketViewModel(
-            repository: viewModel.repository,
-            gitService: viewModel.gitService
-        ))
-    }
-
-    var body: some View {
-        BitbucketView(viewModel: bitbucketViewModel)
-    }
-}
-
-/// Wrapper view for Azure DevOps integration.
-struct AzureDevOpsSectionView: View {
-    @ObservedObject var viewModel: RepositoryViewModel
-
-    var body: some View {
-        AzureDevOpsView()
-    }
-}
-
-/// Wrapper view for Gitea integration.
-struct GiteaSectionView: View {
-    @ObservedObject var viewModel: RepositoryViewModel
-
-    var body: some View {
-        GiteaView()
-    }
-}
-
-/// Wrapper view for Beanstalk integration.
-struct BeanstalkSectionView: View {
-    @ObservedObject var viewModel: RepositoryViewModel
-
-    var body: some View {
-        BeanstalkView()
+            .task {
+                await githubViewModel.initialize()
+                await githubViewModel.loadPullRequests()
+            }
     }
 }
 
@@ -429,16 +369,16 @@ struct ArchivedBranchesView: View {
     }
 }
 
-/// Unified pull requests view across all services.
+/// GitHub pull requests view.
 struct UnifiedPullRequestsView: View {
     let repository: Repository
 
-    @StateObject private var viewModel: UnifiedPullRequestsViewModel
-    @State private var localStateFilter: UnifiedPRState = .open
+    @StateObject private var viewModel: GitHubPullRequestsViewModel
+    @State private var localStateFilter: GitHubPRState = .open
 
     init(repository: Repository) {
         self.repository = repository
-        self._viewModel = StateObject(wrappedValue: UnifiedPullRequestsViewModel(repository: repository))
+        self._viewModel = StateObject(wrappedValue: GitHubPullRequestsViewModel(repository: repository))
     }
 
     var body: some View {
@@ -452,7 +392,7 @@ struct UnifiedPullRequestsView: View {
                 .frame(minWidth: 400)
         }
         .task {
-            await viewModel.loadAllPullRequests()
+            await viewModel.loadPullRequests()
         }
     }
 
@@ -468,7 +408,7 @@ struct UnifiedPullRequestsView: View {
                         .controlSize(.small)
                 }
                 Button {
-                    Task { await viewModel.loadAllPullRequests() }
+                    Task { await viewModel.loadPullRequests() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -482,9 +422,9 @@ struct UnifiedPullRequestsView: View {
 
             // State filter
             Picker("State", selection: $localStateFilter) {
-                Text("Open").tag(UnifiedPRState.open)
-                Text("Closed").tag(UnifiedPRState.closed)
-                Text("All").tag(UnifiedPRState.all)
+                Text("Open").tag(GitHubPRState.open)
+                Text("Closed").tag(GitHubPRState.closed)
+                Text("All").tag(GitHubPRState.all)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
@@ -497,7 +437,7 @@ struct UnifiedPullRequestsView: View {
 
             Divider()
 
-            // PR List by service
+            // PR List
             if viewModel.hasNoPRs && !viewModel.isLoading {
                 emptyState
             } else {
@@ -514,8 +454,8 @@ struct UnifiedPullRequestsView: View {
                 .foregroundStyle(.secondary)
             Text("No Pull Requests")
                 .font(.headline)
-            Text(viewModel.connectedServices.isEmpty
-                ? "Connect a service in Settings to view pull requests."
+            Text(!viewModel.isConnected
+                ? "Connect to GitHub in Settings to view pull requests."
                 : "No pull requests found for the current filter.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -527,111 +467,31 @@ struct UnifiedPullRequestsView: View {
 
     private var prList: some View {
         List(selection: $viewModel.selectedPR) {
-            // GitHub PRs
-            if viewModel.isServiceConnected(.github) {
-                Section {
-                    ForEach(viewModel.filteredGitHubPRs) { pr in
-                        UnifiedPRRow(pr: .github(pr))
-                            .tag(UnifiedPR.github(pr))
-                    }
-                } header: {
-                    serviceHeader(
-                        name: "GitHub",
-                        icon: "link.circle",
-                        count: viewModel.filteredGitHubPRs.count,
-                        isLoading: viewModel.isLoadingGitHub
-                    )
+            Section {
+                ForEach(viewModel.filteredPullRequests) { pr in
+                    GitHubPRRow(pr: pr)
+                        .tag(pr)
                 }
-            }
-
-            // GitLab MRs
-            if viewModel.isServiceConnected(.gitlab) {
-                Section {
-                    ForEach(viewModel.filteredGitLabMRs) { mr in
-                        UnifiedPRRow(pr: .gitlab(mr))
-                            .tag(UnifiedPR.gitlab(mr))
+            } header: {
+                HStack {
+                    Image(systemName: "link.circle")
+                    Text("GitHub")
+                    Text("(\(viewModel.filteredPullRequests.count))")
+                        .foregroundStyle(.secondary)
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .controlSize(.mini)
                     }
-                } header: {
-                    serviceHeader(
-                        name: "GitLab",
-                        icon: "g.circle",
-                        count: viewModel.filteredGitLabMRs.count,
-                        isLoading: viewModel.isLoadingGitLab
-                    )
-                }
-            }
-
-            // Bitbucket PRs
-            if viewModel.isServiceConnected(.bitbucket) {
-                Section {
-                    ForEach(viewModel.filteredBitbucketPRs) { pr in
-                        UnifiedPRRow(pr: .bitbucket(pr))
-                            .tag(UnifiedPR.bitbucket(pr))
-                    }
-                } header: {
-                    serviceHeader(
-                        name: "Bitbucket",
-                        icon: "b.circle",
-                        count: viewModel.filteredBitbucketPRs.count,
-                        isLoading: viewModel.isLoadingBitbucket
-                    )
-                }
-            }
-
-            // Azure DevOps PRs
-            if viewModel.isServiceConnected(.azureDevOps) {
-                Section {
-                    ForEach(viewModel.filteredAzureDevOpsPRs) { pr in
-                        UnifiedPRRow(pr: .azureDevOps(pr))
-                            .tag(UnifiedPR.azureDevOps(pr))
-                    }
-                } header: {
-                    serviceHeader(
-                        name: "Azure DevOps",
-                        icon: "a.circle",
-                        count: viewModel.filteredAzureDevOpsPRs.count,
-                        isLoading: viewModel.isLoadingAzureDevOps
-                    )
-                }
-            }
-
-            // Gitea PRs
-            if viewModel.isServiceConnected(.gitea) {
-                Section {
-                    ForEach(viewModel.filteredGiteaPRs) { pr in
-                        UnifiedPRRow(pr: .gitea(pr))
-                            .tag(UnifiedPR.gitea(pr))
-                    }
-                } header: {
-                    serviceHeader(
-                        name: "Gitea",
-                        icon: "leaf.circle",
-                        count: viewModel.filteredGiteaPRs.count,
-                        isLoading: viewModel.isLoadingGitea
-                    )
                 }
             }
         }
         .listStyle(.inset)
     }
 
-    private func serviceHeader(name: String, icon: String, count: Int, isLoading: Bool) -> some View {
-        HStack {
-            Image(systemName: icon)
-            Text(name)
-            Text("(\(count))")
-                .foregroundStyle(.secondary)
-            if isLoading {
-                ProgressView()
-                    .controlSize(.mini)
-            }
-        }
-    }
-
     @ViewBuilder
     private var detailView: some View {
         if let selectedPR = viewModel.selectedPR {
-            UnifiedPRDetailView(
+            GitHubPRDetailView(
                 pr: selectedPR,
                 repository: repository,
                 viewModel: viewModel
@@ -656,144 +516,22 @@ struct UnifiedPullRequestsView: View {
     }
 }
 
-// MARK: - Unified PR Types
+// MARK: - GitHub PR Types
 
-enum UnifiedPRState: String, CaseIterable {
+enum GitHubPRState: String, CaseIterable {
     case open, closed, all
 }
 
-enum UnifiedPRService: String, CaseIterable {
-    case github, gitlab, bitbucket, azureDevOps, gitea
-}
+// MARK: - GitHub PR Row
 
-enum UnifiedPR: Identifiable, Hashable {
-    case github(GitHubPullRequest)
-    case gitlab(GitLabMergeRequest)
-    case bitbucket(BitbucketPullRequest)
-    case azureDevOps(AzureDevOpsPullRequest)
-    case gitea(GiteaPullRequest)
-
-    var id: String {
-        switch self {
-        case .github(let pr): return "github-\(pr.id)"
-        case .gitlab(let mr): return "gitlab-\(mr.id)"
-        case .bitbucket(let pr): return "bitbucket-\(pr.id)"
-        case .azureDevOps(let pr): return "azure-\(pr.pullRequestId)"
-        case .gitea(let pr): return "gitea-\(pr.id)"
-        }
-    }
-
-    var title: String {
-        switch self {
-        case .github(let pr): return pr.title
-        case .gitlab(let mr): return mr.title
-        case .bitbucket(let pr): return pr.title
-        case .azureDevOps(let pr): return pr.title
-        case .gitea(let pr): return pr.title
-        }
-    }
-
-    var number: Int {
-        switch self {
-        case .github(let pr): return pr.number
-        case .gitlab(let mr): return mr.iid
-        case .bitbucket(let pr): return pr.id
-        case .azureDevOps(let pr): return pr.pullRequestId
-        case .gitea(let pr): return pr.number
-        }
-    }
-
-    var authorName: String {
-        switch self {
-        case .github(let pr): return pr.user.login
-        case .gitlab(let mr): return mr.author.username
-        case .bitbucket(let pr): return pr.author.displayName
-        case .azureDevOps(let pr): return pr.createdBy.displayName
-        case .gitea(let pr): return pr.user?.login ?? "Unknown"
-        }
-    }
-
-    var sourceBranch: String {
-        switch self {
-        case .github(let pr): return pr.head.ref
-        case .gitlab(let mr): return mr.sourceBranch
-        case .bitbucket(let pr): return pr.source.branch.name
-        case .azureDevOps(let pr): return pr.sourceRefName.replacingOccurrences(of: "refs/heads/", with: "")
-        case .gitea(let pr): return pr.head?.ref ?? ""
-        }
-    }
-
-    var targetBranch: String {
-        switch self {
-        case .github(let pr): return pr.base.ref
-        case .gitlab(let mr): return mr.targetBranch
-        case .bitbucket(let pr): return pr.destination.branch.name
-        case .azureDevOps(let pr): return pr.targetRefName.replacingOccurrences(of: "refs/heads/", with: "")
-        case .gitea(let pr): return pr.base?.ref ?? ""
-        }
-    }
-
-    var isOpen: Bool {
-        switch self {
-        case .github(let pr): return pr.state == "open"
-        case .gitlab(let mr): return mr.state == .opened
-        case .bitbucket(let pr): return pr.state == .open
-        case .azureDevOps(let pr): return pr.status == "active"
-        case .gitea(let pr): return pr.state == "open"
-        }
-    }
-
-    var isDraft: Bool {
-        switch self {
-        case .github(let pr): return pr.isDraft
-        case .gitlab(let mr): return mr.isDraft
-        case .bitbucket: return false
-        case .azureDevOps(let pr): return pr.isDraft ?? false
-        case .gitea: return false
-        }
-    }
-
-    var serviceName: String {
-        switch self {
-        case .github: return "GitHub"
-        case .gitlab: return "GitLab"
-        case .bitbucket: return "Bitbucket"
-        case .azureDevOps: return "Azure DevOps"
-        case .gitea: return "Gitea"
-        }
-    }
-
-    var serviceIcon: String {
-        switch self {
-        case .github: return "link.circle"
-        case .gitlab: return "g.circle"
-        case .bitbucket: return "b.circle"
-        case .azureDevOps: return "a.circle"
-        case .gitea: return "leaf.circle"
-        }
-    }
-
-    var webURL: String? {
-        switch self {
-        case .github(let pr): return pr.htmlUrl
-        case .gitlab(let mr): return mr.webUrl
-        case .bitbucket(let pr): return pr.links.html?.href
-        case .azureDevOps(let pr): return pr.url
-        case .gitea(let pr): return pr.htmlUrl
-        }
-    }
-}
-
-// MARK: - Unified PR Row
-
-struct UnifiedPRRow: View {
-    let pr: UnifiedPR
+struct GitHubPRRow: View {
+    let pr: GitHubPullRequest
 
     var body: some View {
         HStack(spacing: 8) {
             // Status icon
-            Image(systemName: pr.isOpen ? "arrow.triangle.pull" : "checkmark.circle")
-                .foregroundStyle(pr.isOpen ? .green : .purple)
+            Image(systemName: pr.state == "open" ? "arrow.triangle.pull" : "checkmark.circle")
+                .foregroundStyle(pr.state == "open" ? .green : .purple)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
@@ -805,12 +543,12 @@ struct UnifiedPRRow: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text(pr.authorName)
+                    Text(pr.user.login)
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
                     HStack(spacing: 4) {
-                        Text(pr.sourceBranch)
+                        Text(pr.head.ref)
                             .font(.caption2.monospaced())
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
@@ -821,7 +559,7 @@ struct UnifiedPRRow: View {
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
 
-                        Text(pr.targetBranch)
+                        Text(pr.base.ref)
                             .font(.caption2.monospaced())
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
@@ -846,12 +584,12 @@ struct UnifiedPRRow: View {
     }
 }
 
-// MARK: - Unified PR Detail View
+// MARK: - GitHub PR Detail View
 
-struct UnifiedPRDetailView: View {
-    let pr: UnifiedPR
+struct GitHubPRDetailView: View {
+    let pr: GitHubPullRequest
     let repository: Repository
-    @ObservedObject var viewModel: UnifiedPullRequestsViewModel
+    @ObservedObject var viewModel: GitHubPullRequestsViewModel
 
     @State private var selectedTab: DetailTab = .diff
     @State private var showCommentSheet = false
@@ -872,7 +610,7 @@ struct UnifiedPRDetailView: View {
             prHeader
 
             // Action buttons for open PRs
-            if pr.isOpen {
+            if pr.state == "open" {
                 Divider()
                 prActions
             }
@@ -899,13 +637,13 @@ struct UnifiedPRDetailView: View {
             }
         }
         .sheet(isPresented: $showCommentSheet) {
-            UnifiedPRCommentSheet(pr: pr, viewModel: viewModel, onDismiss: { showCommentSheet = false })
+            GitHubPRCommentSheet(pr: pr, viewModel: viewModel, onDismiss: { showCommentSheet = false })
         }
         .sheet(isPresented: $showReviewSheet) {
-            UnifiedPRReviewSheet(pr: pr, viewModel: viewModel, onDismiss: { showReviewSheet = false })
+            GitHubPRReviewSheet(pr: pr, viewModel: viewModel, onDismiss: { showReviewSheet = false })
         }
         .sheet(isPresented: $showMergeSheet) {
-            UnifiedPRMergeSheet(pr: pr, viewModel: viewModel, onDismiss: { showMergeSheet = false })
+            GitHubPRMergeSheet(pr: pr, viewModel: viewModel, onDismiss: { showMergeSheet = false })
         }
         .alert("Close Pull Request?", isPresented: $showCloseConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -932,15 +670,15 @@ struct UnifiedPRDetailView: View {
     private var prHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Image(systemName: pr.serviceIcon)
+                Image(systemName: "link.circle")
                     .foregroundStyle(.blue)
-                Text(pr.serviceName)
+                Text("GitHub")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
-                if let url = pr.webURL, let webURL = URL(string: url) {
+                if let webURL = URL(string: pr.htmlUrl) {
                     Link(destination: webURL) {
                         HStack(spacing: 4) {
                             Text("Open in Browser")
@@ -954,8 +692,8 @@ struct UnifiedPRDetailView: View {
             }
 
             HStack(alignment: .top) {
-                Image(systemName: pr.isOpen ? "arrow.triangle.pull" : "checkmark.circle.fill")
-                    .foregroundStyle(pr.isOpen ? .green : .purple)
+                Image(systemName: pr.state == "open" ? "arrow.triangle.pull" : "checkmark.circle.fill")
+                    .foregroundStyle(pr.state == "open" ? .green : .purple)
                     .font(.title2)
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -967,7 +705,7 @@ struct UnifiedPRDetailView: View {
                             .font(.subheadline.monospaced())
                             .foregroundStyle(.secondary)
 
-                        Text("by \(pr.authorName)")
+                        Text("by \(pr.user.login)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
@@ -983,7 +721,7 @@ struct UnifiedPRDetailView: View {
                     }
 
                     HStack(spacing: 4) {
-                        Text(pr.sourceBranch)
+                        Text(pr.head.ref)
                             .font(.caption.monospaced())
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -994,7 +732,7 @@ struct UnifiedPRDetailView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        Text(pr.targetBranch)
+                        Text(pr.base.ref)
                             .font(.caption.monospaced())
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -1057,12 +795,12 @@ struct UnifiedPRDetailView: View {
 
     @ViewBuilder
     private var diffView: some View {
-        UnifiedPRDiffView(pr: pr, repository: repository, viewModel: viewModel)
+        GitHubPRDiffView(pr: pr, repository: repository, viewModel: viewModel)
     }
 
     private var descriptionView: some View {
         Group {
-            if let description = prDescription, !description.isEmpty {
+            if let description = pr.body, !description.isEmpty {
                 MarkdownContentView(markdown: description)
             } else {
                 VStack {
@@ -1077,23 +815,13 @@ struct UnifiedPRDetailView: View {
             }
         }
     }
-
-    private var prDescription: String? {
-        switch pr {
-        case .github(let pr): return pr.body
-        case .gitlab(let mr): return mr.description
-        case .bitbucket(let pr): return pr.description
-        case .azureDevOps(let pr): return pr.description
-        case .gitea(let pr): return pr.body
-        }
-    }
 }
 
 // MARK: - PR Comment Sheet
 
-struct UnifiedPRCommentSheet: View {
-    let pr: UnifiedPR
-    @ObservedObject var viewModel: UnifiedPullRequestsViewModel
+struct GitHubPRCommentSheet: View {
+    let pr: GitHubPullRequest
+    @ObservedObject var viewModel: GitHubPullRequestsViewModel
     let onDismiss: () -> Void
 
     @State private var commentText = ""
@@ -1118,7 +846,7 @@ struct UnifiedPRCommentSheet: View {
 
             // Comment input
             VStack(alignment: .leading, spacing: 8) {
-                Text("Comment on \(pr.serviceName) #\(pr.number)")
+                Text("Comment on GitHub #\(pr.number)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -1176,9 +904,9 @@ struct UnifiedPRCommentSheet: View {
 
 // MARK: - PR Review Sheet
 
-struct UnifiedPRReviewSheet: View {
-    let pr: UnifiedPR
-    @ObservedObject var viewModel: UnifiedPullRequestsViewModel
+struct GitHubPRReviewSheet: View {
+    let pr: GitHubPullRequest
+    @ObservedObject var viewModel: GitHubPullRequestsViewModel
     let onDismiss: () -> Void
 
     @State private var reviewBody = ""
@@ -1324,9 +1052,9 @@ struct UnifiedPRReviewSheet: View {
 
 // MARK: - PR Merge Sheet
 
-struct UnifiedPRMergeSheet: View {
-    let pr: UnifiedPR
-    @ObservedObject var viewModel: UnifiedPullRequestsViewModel
+struct GitHubPRMergeSheet: View {
+    let pr: GitHubPullRequest
+    @ObservedObject var viewModel: GitHubPullRequestsViewModel
     let onDismiss: () -> Void
 
     @State private var mergeMethod: MergeMethod = .merge
@@ -1450,7 +1178,7 @@ struct UnifiedPRMergeSheet: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Delete source branch")
                                 .fontWeight(.medium)
-                            Text("Delete '\(pr.sourceBranch)' after merging")
+                            Text("Delete '\(pr.head.ref)' after merging")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -1499,7 +1227,7 @@ struct UnifiedPRMergeSheet: View {
         .frame(width: 550, height: 580)
         .onAppear {
             // Set default commit title
-            commitTitle = "Merge pull request #\(pr.number) from \(pr.sourceBranch)"
+            commitTitle = "Merge pull request #\(pr.number) from \(pr.head.ref)"
         }
     }
 
@@ -1525,15 +1253,15 @@ struct UnifiedPRMergeSheet: View {
     }
 }
 
-// MARK: - Unified PR Diff View
+// MARK: - GitHub PR Diff View
 
-struct UnifiedPRDiffView: View {
-    let pr: UnifiedPR
+struct GitHubPRDiffView: View {
+    let pr: GitHubPullRequest
     let repository: Repository
-    @ObservedObject var viewModel: UnifiedPullRequestsViewModel
+    @ObservedObject var viewModel: GitHubPullRequestsViewModel
 
-    @State private var files: [UnifiedPRFile] = []
-    @State private var selectedFile: UnifiedPRFile?
+    @State private var files: [PRFileItem] = []
+    @State private var selectedFile: PRFileItem?
     @State private var isLoading = false
     @State private var error: String?
 
@@ -1581,7 +1309,7 @@ struct UnifiedPRDiffView: View {
                         Spacer()
                     } else {
                         List(files, selection: $selectedFile) { file in
-                            UnifiedPRFileRow(file: file)
+                            PRFileItemRow(file: file)
                                 .tag(file)
                         }
                         .listStyle(.inset)
@@ -1649,7 +1377,7 @@ struct UnifiedPRDiffView: View {
     }
 
     @ViewBuilder
-    private func fileDiffView(for file: UnifiedPRFile) -> some View {
+    private func fileDiffView(for file: PRFileItem) -> some View {
         VStack(spacing: 0) {
             // Toolbar
             PRDiffToolbar(
@@ -1704,7 +1432,7 @@ struct UnifiedPRDiffView: View {
 // MARK: - PR Diff Toolbar
 
 struct PRDiffToolbar: View {
-    let file: UnifiedPRFile
+    let file: PRFileItem
     @Binding var showLineNumbers: Bool
     @Binding var wrapLines: Bool
     @Binding var showSearch: Bool
@@ -1910,9 +1638,9 @@ struct PRDiffLineRow: View {
     }
 }
 
-// MARK: - Unified PR File
+// MARK: - GitHub PR File
 
-struct UnifiedPRFile: Identifiable, Hashable {
+struct PRFileItem: Identifiable, Hashable {
     let id: String
     let filename: String
     let status: String
@@ -1941,8 +1669,8 @@ struct UnifiedPRFile: Identifiable, Hashable {
     }
 }
 
-struct UnifiedPRFileRow: View {
-    let file: UnifiedPRFile
+struct PRFileItemRow: View {
+    let file: PRFileItem
 
     private var displayName: String {
         // Show just the filename, not the full path
@@ -1980,77 +1708,35 @@ struct UnifiedPRFileRow: View {
     }
 }
 
-// MARK: - Unified Pull Requests View Model
+// MARK: - GitHub Pull Requests View Model
 
 @MainActor
-class UnifiedPullRequestsViewModel: ObservableObject {
-    @Published var stateFilter: UnifiedPRState = .open
-    @Published var selectedPR: UnifiedPR?
+class GitHubPullRequestsViewModel: ObservableObject {
+    @Published var stateFilter: GitHubPRState = .open
+    @Published var selectedPR: GitHubPullRequest?
 
-    @Published private(set) var githubPRs: [GitHubPullRequest] = []
-    @Published private(set) var gitlabMRs: [GitLabMergeRequest] = []
-    @Published private(set) var bitbucketPRs: [BitbucketPullRequest] = []
-    @Published private(set) var azureDevOpsPRs: [AzureDevOpsPullRequest] = []
-    @Published private(set) var giteaPRs: [GiteaPullRequest] = []
-
+    @Published private(set) var pullRequests: [GitHubPullRequest] = []
     @Published private(set) var isLoading = false
-    @Published private(set) var isLoadingGitHub = false
-    @Published private(set) var isLoadingGitLab = false
-    @Published private(set) var isLoadingBitbucket = false
-    @Published private(set) var isLoadingAzureDevOps = false
-    @Published private(set) var isLoadingGitea = false
 
     private let repository: Repository
     private let keychainService = KeychainService.shared
     private let gitService = GitService()
-
-    // Service instances (using shared singletons where required)
     private lazy var githubService = GitHubService()
-    private lazy var gitlabService = GitLabService()
-    private lazy var bitbucketService = BitbucketService()
-    private var azureDevOpsService: AzureDevOpsService { AzureDevOpsService.shared }
-    private var giteaService: GiteaService { GiteaService.shared }
 
     init(repository: Repository) {
         self.repository = repository
     }
 
-    var connectedServices: [UnifiedPRService] {
-        var services: [UnifiedPRService] = []
-        if isServiceConnected(.github) { services.append(.github) }
-        if isServiceConnected(.gitlab) { services.append(.gitlab) }
-        if isServiceConnected(.bitbucket) { services.append(.bitbucket) }
-        if isServiceConnected(.azureDevOps) { services.append(.azureDevOps) }
-        if isServiceConnected(.gitea) { services.append(.gitea) }
-        return services
-    }
-
-    func isServiceConnected(_ service: UnifiedPRService) -> Bool {
-        switch service {
-        case .github:
-            return keychainService.retrieve(for: KeychainAccount.githubToken) != nil
-        case .gitlab:
-            return keychainService.retrieve(for: KeychainAccount.gitlabToken) != nil
-        case .bitbucket:
-            return keychainService.retrieve(for: KeychainAccount.bitbucketToken) != nil
-        case .azureDevOps:
-            return keychainService.retrieve(for: KeychainAccount.azureDevOpsToken) != nil
-        case .gitea:
-            // Gitea uses account-based auth stored differently
-            return false // TODO: Check Gitea accounts
-        }
+    var isConnected: Bool {
+        keychainService.retrieve(for: KeychainAccount.githubToken) != nil
     }
 
     var hasNoPRs: Bool {
-        filteredGitHubPRs.isEmpty &&
-        filteredGitLabMRs.isEmpty &&
-        filteredBitbucketPRs.isEmpty &&
-        filteredAzureDevOpsPRs.isEmpty &&
-        filteredGiteaPRs.isEmpty
+        filteredPullRequests.isEmpty
     }
 
-    var filteredGitHubPRs: [GitHubPullRequest] {
-        filterPRs(githubPRs) { pr in
+    var filteredPullRequests: [GitHubPullRequest] {
+        pullRequests.filter { pr in
             switch stateFilter {
             case .open: return pr.state == "open"
             case .closed: return pr.state == "closed"
@@ -2059,74 +1745,9 @@ class UnifiedPullRequestsViewModel: ObservableObject {
         }
     }
 
-    var filteredGitLabMRs: [GitLabMergeRequest] {
-        filterPRs(gitlabMRs) { mr in
-            switch stateFilter {
-            case .open: return mr.state == .opened
-            case .closed: return mr.state == .closed || mr.state == .merged
-            case .all: return true
-            }
-        }
-    }
-
-    var filteredBitbucketPRs: [BitbucketPullRequest] {
-        filterPRs(bitbucketPRs) { pr in
-            switch stateFilter {
-            case .open: return pr.state == .open
-            case .closed: return pr.state == .merged || pr.state == .declined
-            case .all: return true
-            }
-        }
-    }
-
-    var filteredAzureDevOpsPRs: [AzureDevOpsPullRequest] {
-        filterPRs(azureDevOpsPRs) { pr in
-            switch stateFilter {
-            case .open: return pr.status == "active"
-            case .closed: return pr.status == "completed" || pr.status == "abandoned"
-            case .all: return true
-            }
-        }
-    }
-
-    var filteredGiteaPRs: [GiteaPullRequest] {
-        filterPRs(giteaPRs) { pr in
-            switch stateFilter {
-            case .open: return pr.state == "open"
-            case .closed: return pr.state == "closed"
-            case .all: return true
-            }
-        }
-    }
-
-    private func filterPRs<T>(_ prs: [T], predicate: (T) -> Bool) -> [T] {
-        prs.filter(predicate)
-    }
-
-    func loadAllPullRequests() async {
+    func loadPullRequests() async {
         isLoading = true
-
-        await withTaskGroup(of: Void.self) { group in
-            if isServiceConnected(.github) {
-                group.addTask { await self.loadGitHubPRs() }
-            }
-            if isServiceConnected(.gitlab) {
-                group.addTask { await self.loadGitLabMRs() }
-            }
-            if isServiceConnected(.bitbucket) {
-                group.addTask { await self.loadBitbucketPRs() }
-            }
-            if isServiceConnected(.azureDevOps) {
-                group.addTask { await self.loadAzureDevOpsPRs() }
-            }
-        }
-
-        isLoading = false
-    }
-
-    private func loadGitHubPRs() async {
-        isLoadingGitHub = true
-        defer { isLoadingGitHub = false }
+        defer { isLoading = false }
 
         guard let token = keychainService.retrieve(for: KeychainAccount.githubToken),
               let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
@@ -2136,7 +1757,7 @@ class UnifiedPullRequestsViewModel: ObservableObject {
         await githubService.setAuthToken(token)
 
         do {
-            githubPRs = try await githubService.getPullRequests(
+            pullRequests = try await githubService.getPullRequests(
                 owner: repoInfo.owner,
                 repo: repoInfo.repo,
                 state: "all"
@@ -2146,41 +1767,7 @@ class UnifiedPullRequestsViewModel: ObservableObject {
         }
     }
 
-    private func loadGitLabMRs() async {
-        isLoadingGitLab = true
-        // GitLab loading would go here
-        // For now, leave empty as it requires project ID
-        isLoadingGitLab = false
-    }
-
-    private func loadBitbucketPRs() async {
-        isLoadingBitbucket = true
-        // Bitbucket loading would go here
-        isLoadingBitbucket = false
-    }
-
-    private func loadAzureDevOpsPRs() async {
-        isLoadingAzureDevOps = true
-        // Azure DevOps loading would go here
-        isLoadingAzureDevOps = false
-    }
-
-    func loadFilesForPR(_ pr: UnifiedPR) async throws -> [UnifiedPRFile] {
-        switch pr {
-        case .github(let ghPR):
-            return try await loadGitHubPRFiles(ghPR)
-        case .gitlab(let mr):
-            return try await loadGitLabMRFiles(mr)
-        case .bitbucket(let bbPR):
-            return try await loadBitbucketPRFiles(bbPR)
-        case .azureDevOps(let adoPR):
-            return try await loadAzureDevOpsPRFiles(adoPR)
-        case .gitea(let giteaPR):
-            return try await loadGiteaPRFiles(giteaPR)
-        }
-    }
-
-    private func loadGitHubPRFiles(_ pr: GitHubPullRequest) async throws -> [UnifiedPRFile] {
+    func loadFilesForPR(_ pr: GitHubPullRequest) async throws -> [PRFileItem] {
         guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
             return []
         }
@@ -2192,7 +1779,7 @@ class UnifiedPullRequestsViewModel: ObservableObject {
         )
 
         return files.map { file in
-            UnifiedPRFile(
+            PRFileItem(
                 id: file.id,
                 filename: file.filename,
                 status: file.status.rawValue,
@@ -2203,234 +1790,103 @@ class UnifiedPullRequestsViewModel: ObservableObject {
         }
     }
 
-    private func loadGitLabMRFiles(_ mr: GitLabMergeRequest) async throws -> [UnifiedPRFile] {
-        // GitLab MR files loading would go here
-        return []
-    }
-
-    private func loadBitbucketPRFiles(_ pr: BitbucketPullRequest) async throws -> [UnifiedPRFile] {
-        // Bitbucket PR files loading would go here
-        return []
-    }
-
-    private func loadAzureDevOpsPRFiles(_ pr: AzureDevOpsPullRequest) async throws -> [UnifiedPRFile] {
-        // Azure DevOps PR files loading would go here
-        return []
-    }
-
-    private func loadGiteaPRFiles(_ pr: GiteaPullRequest) async throws -> [UnifiedPRFile] {
-        // Gitea PR files loading would go here
-        return []
-    }
-
     // MARK: - PR Actions
 
     /// Add a comment to a pull request
-    func addComment(to pr: UnifiedPR, body: String) async throws {
-        switch pr {
-        case .github(let ghPR):
-            guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
-                throw PRActionError.missingRepoInfo
-            }
-            _ = try await githubService.addComment(
-                owner: repoInfo.owner,
-                repo: repoInfo.repo,
-                issueNumber: ghPR.number,
-                body: body
-            )
-
-        case .gitlab:
-            throw PRActionError.notImplemented("GitLab comments")
-
-        case .bitbucket:
-            throw PRActionError.notImplemented("Bitbucket comments")
-
-        case .azureDevOps(let adoPR):
-            guard let repoRef = adoPR.repository else {
-                throw PRActionError.missingRepoInfo
-            }
-            _ = try await azureDevOpsService.addPullRequestComment(
-                projectId: repoRef.project?.id ?? "",
-                repositoryId: repoRef.id,
-                pullRequestId: adoPR.pullRequestId,
-                content: body
-            )
-
-        case .gitea(let giteaPR):
-            guard let repo = giteaPR.base?.repo else {
-                throw PRActionError.missingRepoInfo
-            }
-            _ = try await giteaService.addComment(
-                owner: repo.owner?.login ?? "",
-                repo: repo.name,
-                index: giteaPR.number,
-                body: body
-            )
+    func addComment(to pr: GitHubPullRequest, body: String) async throws {
+        guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
+            throw PRActionError.missingRepoInfo
         }
+        _ = try await githubService.addComment(
+            owner: repoInfo.owner,
+            repo: repoInfo.repo,
+            issueNumber: pr.number,
+            body: body
+        )
     }
 
     /// Submit a review to a pull request
-    func submitReview(to pr: UnifiedPR, action: UnifiedPRReviewSheet.ReviewAction, body: String?) async throws {
-        switch pr {
-        case .github(let ghPR):
-            guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
-                throw PRActionError.missingRepoInfo
-            }
-
-            let event: GitHubService.ReviewEvent
-            switch action {
-            case .approve: event = .approve
-            case .requestChanges: event = .requestChanges
-            case .comment: event = .comment
-            }
-
-            _ = try await githubService.submitReview(
-                owner: repoInfo.owner,
-                repo: repoInfo.repo,
-                pullNumber: ghPR.number,
-                body: body,
-                event: event
-            )
-
-        case .gitlab:
-            throw PRActionError.notImplemented("GitLab reviews")
-
-        case .bitbucket:
-            throw PRActionError.notImplemented("Bitbucket reviews")
-
-        case .azureDevOps:
-            throw PRActionError.notImplemented("Azure DevOps reviews")
-
-        case .gitea(let giteaPR):
-            guard let repo = giteaPR.base?.repo else {
-                throw PRActionError.missingRepoInfo
-            }
-
-            let event: GiteaReviewEvent
-            switch action {
-            case .approve: event = .approve
-            case .requestChanges: event = .requestChanges
-            case .comment: event = .comment
-            }
-
-            _ = try await giteaService.addReview(
-                owner: repo.owner?.login ?? "",
-                repo: repo.name,
-                index: giteaPR.number,
-                event: event,
-                body: body
-            )
+    func submitReview(to pr: GitHubPullRequest, action: GitHubPRReviewSheet.ReviewAction, body: String?) async throws {
+        guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
+            throw PRActionError.missingRepoInfo
         }
 
+        let event: GitHubService.ReviewEvent
+        switch action {
+        case .approve: event = .approve
+        case .requestChanges: event = .requestChanges
+        case .comment: event = .comment
+        }
+
+        _ = try await githubService.submitReview(
+            owner: repoInfo.owner,
+            repo: repoInfo.repo,
+            pullNumber: pr.number,
+            body: body,
+            event: event
+        )
+
         // Refresh PRs after action
-        await loadAllPullRequests()
+        await loadPullRequests()
     }
 
     /// Merge a pull request
     func mergePR(
-        _ pr: UnifiedPR,
-        method: UnifiedPRMergeSheet.MergeMethod,
+        _ pr: GitHubPullRequest,
+        method: GitHubPRMergeSheet.MergeMethod,
         title: String?,
         message: String?,
         deleteSourceBranch: Bool
     ) async throws {
-        switch pr {
-        case .github(let ghPR):
-            guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
-                throw PRActionError.missingRepoInfo
-            }
+        guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
+            throw PRActionError.missingRepoInfo
+        }
 
-            let mergeMethod: String
-            switch method {
-            case .merge: mergeMethod = "merge"
-            case .squash: mergeMethod = "squash"
-            case .rebase: mergeMethod = "rebase"
-            }
+        let mergeMethod: String
+        switch method {
+        case .merge: mergeMethod = "merge"
+        case .squash: mergeMethod = "squash"
+        case .rebase: mergeMethod = "rebase"
+        }
 
-            _ = try await githubService.mergePullRequest(
+        _ = try await githubService.mergePullRequest(
+            owner: repoInfo.owner,
+            repo: repoInfo.repo,
+            number: pr.number,
+            commitTitle: title,
+            commitMessage: message,
+            mergeMethod: mergeMethod
+        )
+
+        // Delete source branch if requested
+        if deleteSourceBranch {
+            try? await githubService.deleteBranch(
                 owner: repoInfo.owner,
                 repo: repoInfo.repo,
-                number: ghPR.number,
-                commitTitle: title,
-                commitMessage: message,
-                mergeMethod: mergeMethod
-            )
-
-            // Delete source branch if requested
-            if deleteSourceBranch {
-                try? await githubService.deleteBranch(
-                    owner: repoInfo.owner,
-                    repo: repoInfo.repo,
-                    branch: ghPR.head.ref
-                )
-            }
-
-        case .gitlab:
-            throw PRActionError.notImplemented("GitLab merge")
-
-        case .bitbucket:
-            throw PRActionError.notImplemented("Bitbucket merge")
-
-        case .azureDevOps:
-            throw PRActionError.notImplemented("Azure DevOps merge")
-
-        case .gitea(let giteaPR):
-            guard let repo = giteaPR.base?.repo else {
-                throw PRActionError.missingRepoInfo
-            }
-
-            let mergeStyle: GiteaMergeStyle
-            switch method {
-            case .merge: mergeStyle = .merge
-            case .squash: mergeStyle = .squash
-            case .rebase: mergeStyle = .rebase
-            }
-
-            try await giteaService.mergePullRequest(
-                owner: repo.owner?.login ?? "",
-                repo: repo.name,
-                index: giteaPR.number,
-                mergeStyle: mergeStyle,
-                title: title,
-                message: message
+                branch: pr.head.ref
             )
         }
 
         // Refresh PRs after merge
         selectedPR = nil
-        await loadAllPullRequests()
+        await loadPullRequests()
     }
 
     /// Close a pull request without merging
-    func closePR(_ pr: UnifiedPR) async {
+    func closePR(_ pr: GitHubPullRequest) async {
         do {
-            switch pr {
-            case .github(let ghPR):
-                guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
-                    return
-                }
-                _ = try await githubService.closePullRequest(
-                    owner: repoInfo.owner,
-                    repo: repoInfo.repo,
-                    number: ghPR.number
-                )
-
-            case .gitlab:
-                print("GitLab close PR not implemented")
-
-            case .bitbucket:
-                print("Bitbucket close PR not implemented")
-
-            case .azureDevOps:
-                print("Azure DevOps close PR not implemented")
-
-            case .gitea:
-                print("Gitea close PR not implemented")
+            guard let repoInfo = await githubService.getGitHubInfo(for: repository, gitService: gitService) else {
+                return
             }
+            _ = try await githubService.closePullRequest(
+                owner: repoInfo.owner,
+                repo: repoInfo.repo,
+                number: pr.number
+            )
 
             // Refresh PRs after close
             selectedPR = nil
-            await loadAllPullRequests()
+            await loadPullRequests()
         } catch {
             print("Failed to close PR: \(error)")
         }

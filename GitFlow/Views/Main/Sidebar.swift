@@ -23,13 +23,8 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     // Pull Requests
     case pullRequests = "Pull Requests"
 
-    // Service Integrations
+    // GitHub Integration
     case github = "GitHub"
-    case gitlab = "GitLab"
-    case bitbucket = "Bitbucket"
-    case azureDevOps = "Azure DevOps"
-    case gitea = "Gitea"
-    case beanstalk = "Beanstalk"
 
     var id: String { rawValue }
 
@@ -49,11 +44,6 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .remotes: return "arrow.triangle.2.circlepath"
         case .pullRequests: return "arrow.triangle.pull"
         case .github: return "link.circle"
-        case .gitlab: return "g.circle"
-        case .bitbucket: return "b.circle"
-        case .azureDevOps: return "a.circle"
-        case .gitea: return "leaf.circle"
-        case .beanstalk: return "tree"
         }
     }
 
@@ -65,8 +55,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
              .remotes, .pullRequests,
              .github:
             return true
-        case .branchesReview, .archivedBranches,
-             .gitlab, .bitbucket, .azureDevOps, .gitea, .beanstalk:
+        case .branchesReview, .archivedBranches:
             return false // These are shown conditionally
         }
     }
@@ -124,17 +113,12 @@ struct Sidebar: View {
             Section("Remote") {
                 sidebarItem(for: .remotes, badge: syncBadge)
                     .dropTarget(.remotesSection, coordinator: dragDropCoordinator)
-                sidebarItem(for: .pullRequests, badge: prCountBadge)
+                sidebarItem(for: .pullRequests, badge: prNotificationBadge)
                     .dropTarget(.pullRequests, coordinator: dragDropCoordinator)
             }
 
             Section("Services") {
                 sidebarItem(for: .github, badge: nil)
-                sidebarItem(for: .gitlab, badge: nil)
-                sidebarItem(for: .bitbucket, badge: nil)
-                sidebarItem(for: .azureDevOps, badge: nil)
-                sidebarItem(for: .gitea, badge: nil)
-                sidebarItem(for: .beanstalk, badge: nil)
             }
         }
         .listStyle(.sidebar)
@@ -271,10 +255,11 @@ struct Sidebar: View {
         )
     }
 
-    private var prCountBadge: AnyView? {
-        // Pull request count - would come from GitHub/GitLab view models
+    private var prNotificationBadge: AnyView? {
+        // PR notification badge - can be implemented later
         return nil
     }
+
 }
 
 // MARK: - Drag and Drop Helper Sheets

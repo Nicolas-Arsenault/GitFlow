@@ -95,6 +95,66 @@ actor GitHubService {
         return try decoder.decode(GitHubIssue.self, from: data)
     }
 
+    /// Updates an issue.
+    /// - Parameters:
+    ///   - owner: Repository owner.
+    ///   - repo: Repository name.
+    ///   - number: Issue number.
+    ///   - title: New title (optional).
+    ///   - body: New body (optional).
+    ///   - state: New state: "open" or "closed" (optional).
+    /// - Returns: The updated issue.
+    func updateIssue(
+        owner: String,
+        repo: String,
+        number: Int,
+        title: String? = nil,
+        body: String? = nil,
+        state: String? = nil
+    ) async throws -> GitHubIssue {
+        var payload: [String: Any] = [:]
+        if let title = title { payload["title"] = title }
+        if let body = body { payload["body"] = body }
+        if let state = state { payload["state"] = state }
+
+        let data = try await makePatchRequest(
+            path: "/repos/\(owner)/\(repo)/issues/\(number)",
+            body: payload
+        )
+        return try decoder.decode(GitHubIssue.self, from: data)
+    }
+
+    /// Closes an issue.
+    func closeIssue(owner: String, repo: String, number: Int) async throws -> GitHubIssue {
+        try await updateIssue(owner: owner, repo: repo, number: number, state: "closed")
+    }
+
+    /// Reopens an issue.
+    func reopenIssue(owner: String, repo: String, number: Int) async throws -> GitHubIssue {
+        try await updateIssue(owner: owner, repo: repo, number: number, state: "open")
+    }
+
+    /// Gets comments for an issue.
+    func getIssueComments(owner: String, repo: String, number: Int) async throws -> [GitHubComment] {
+        let data = try await makeRequest(path: "/repos/\(owner)/\(repo)/issues/\(number)/comments")
+        return try decoder.decode([GitHubComment].self, from: data)
+    }
+
+    /// Adds a comment to an issue.
+    func addIssueComment(
+        owner: String,
+        repo: String,
+        number: Int,
+        body: String
+    ) async throws -> GitHubComment {
+        let payload: [String: Any] = ["body": body]
+        let data = try await makePostRequest(
+            path: "/repos/\(owner)/\(repo)/issues/\(number)/comments",
+            body: payload
+        )
+        return try decoder.decode(GitHubComment.self, from: data)
+    }
+
     // MARK: - Pull Requests
 
     /// Gets pull requests for a repository.

@@ -27,7 +27,9 @@ struct ReflogView: View {
             }
 
             // Content
-            if viewModel.entries.isEmpty && !viewModel.isLoading {
+            if viewModel.isLoading && viewModel.entries.isEmpty {
+                LoadingView("Loading reflog...")
+            } else if viewModel.entries.isEmpty {
                 EmptyStateView(
                     "No Reflog Entries",
                     systemImage: "clock.arrow.circlepath",
